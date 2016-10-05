@@ -1,5 +1,4 @@
-﻿void* RewriteFunction(const char* szRewriteModuleName, const char* szRewriteFunctionName, void* pRewriteFunctionPointer, int ordinal = -1);
-void modifyIAT(char *modname, void *origaddr, void *newaddr);
+﻿
 #define WIN32_LEAN_AND_MEAN
 #define NOMINMAX
 #include <Windows.h>
@@ -29,6 +28,11 @@ namespace filesystem = std::experimental::filesystem;
 #endif // NDEBUG
 
 #include <mmd/MMDExport.h>
+
+void* RewriteFunction(const char* szRewriteModuleName, const char* szRewriteFunctionName, void* pRewriteFunctionPointer, int ordinal = -1);
+void modifyIAT(char *modname, void *origaddr, void *newaddr);
+HMODULE dllModule();
+
 namespace efk
 {
   namespace
@@ -289,7 +293,7 @@ namespace efk
     manager->EndUpdate();
     now_frame = new_frame;
 #endif
-  }
+    }
 
   void MyEffect::draw() const
   {
@@ -350,7 +354,7 @@ namespace efk
       char Path[MAX_PATH + 1];
       if ( !nowEFKLoading &&  path.extension() == L".efk" )
       {
-        if ( 0 != GetModuleFileName(NULL, Path, MAX_PATH) )
+        if ( 0 != GetModuleFileNameA(dllModule(), Path, MAX_PATH) )
         {// 実行ファイルの完全パスを取得
 
           path = filesystem::path(Path).parent_path() / L"efk.pmd";
@@ -439,4 +443,4 @@ namespace efk
   }
 
 
-}
+  }
