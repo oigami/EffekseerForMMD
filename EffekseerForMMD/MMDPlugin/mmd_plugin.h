@@ -1,6 +1,18 @@
 #pragma once
 #include <d3d9.h>
 #define MMD_PLUGIN_API __declspec(dllexport)
+#ifdef MAKE_MMD_PLUGIN
+# define MMD_DLL_FUNC_API __declspec(dllexport)
+#else
+# define MMD_DLL_FUNC_API __declspec(dllimport)
+# pragma comment(lib,"MMDPlugin/mmd_plugin")
+#endif // MAKE_MMD_PLUGIN
+
+
+extern "C"
+{
+  MMD_DLL_FUNC_API HWND getHWND();
+}
 
 class MMDPluginDLL1
 {
