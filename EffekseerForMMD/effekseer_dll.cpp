@@ -316,8 +316,24 @@ namespace efk
 
   namespace
   {
+    struct ReadFileData
+    {
+      ReadFileData(const std::string& name): filename(name)
+      {
+        filename.resize(20);
+      }
+
+      std::string filename;
+      int read_cnt = 0;
+      constexpr static int filename_pos = sizeof(char[3]) + sizeof(float);
+      constexpr static int filename_pos_end = sizeof(char[3]) + sizeof(float) + 20;
+    };
+
+    std::unordered_map<HANDLE, ReadFileData> now_read_pmd_file;
+
     HOOK_KERNEL32_CREATE_FUNC(BOOL, CloseHandle, HANDLE hObject)
     {
+      now_read_pmd_file.erase(hObject);
       printf("CloseHandle: %d\n", hObject);
       return PFCloseHandle(hObject);
     }
@@ -343,7 +359,9 @@ namespace efk
       DWORD dwFlagsAndAttributes,
       HANDLE hTemplateFile)
     {
+      bool is_default_pmd = false;
       filesystem::path path(lpFileName);
+      const auto efk_filename = path.filename().stem().stem().string();
       if ( !nowEFKLoading && path.extension() == L".efk" )
       {
         char module_path[MAX_PATH + 1];
@@ -359,11 +377,16 @@ namespace efk
           // dllの場所にあるファイルを使用
           path = filesystem::path(module_path).parent_path() / L"efk.pmd";
           lpFileName = path.c_str();
+          is_default_pmd = true;
         }
       }
       auto handle = PFCreateFileW(lpFileName, dwDesiredAccess, dwShareMode, lpSecurityAttributes, dwCreationDisposition, dwFlagsAndAttributes, hTemplateFile);
       printf("myCreateFile : %d %d\n", handle, GetLastError());
       _putws(lpFileName);
+      if ( is_default_pmd )
+      {
+        now_read_pmd_file.insert({ handle, efk_filename });
+      }
       return handle;
     }
 
@@ -375,7 +398,19 @@ namespace efk
       LPOVERLAPPED lpOverlapped) // オーバーラップ構造体のバッファ
     {
       //printf("ReadFile %d : %d\n", hFile, nNumberOfBytesToRead);
-      return PFReadFile(hFile, lpBuffer, nNumberOfBytesToRead, lpNumberOfBytesRead, lpOverlapped);
+      auto res = PFReadFile(hFile, lpBuffer, nNumberOfBytesToRead, lpNumberOfBytesRead, lpOverlapped);
+      auto it = now_read_pmd_file.find(hFile);
+      if ( it != now_read_pmd_file.end() )
+      {
+        auto& data = it->second;
+        if ( data.filename_pos <= data.read_cnt && data.read_cnt < data.filename_pos_end )
+        {
+          int begin_pos = data.read_cnt - data.filename_pos;
+          memcpy(static_cast<BYTE*>(lpBuffer) + begin_pos, data.filename.c_str() + begin_pos, *lpNumberOfBytesRead - begin_pos);
+        }
+        data.read_cnt += *lpNumberOfBytesRead;
+      }
+      return res;
     }
 
     HOOK_KERNEL32_CREATE_FUNC(DWORD, SetFilePointer,
