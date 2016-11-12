@@ -2,6 +2,7 @@
 #include <unordered_map>
 #include "MMDPlugin/mmd_plugin.h"
 #include <EffekseerRendererDX9.h>
+
 namespace efk
 {
   struct MyEffect
@@ -11,7 +12,7 @@ namespace efk
     MyEffect(Effekseer::Manager* manager, Effekseer::Effect* effect);
 
     ~MyEffect();
-    void setMatrix(const D3DMATRIX& mat);
+    void setMatrix(const D3DMATRIX& mat) const;
 
     void update(float delta_frame);
 
@@ -26,7 +27,7 @@ namespace efk
     float now_frame;
     Effekseer::Manager* manager;
     Effekseer::Handle handle;
-    Effekseer::Effect *effect;
+    Effekseer::Effect* effect;
   };
 
   struct D3D9DeviceEffekserr : MMDPluginDLL1
@@ -37,8 +38,8 @@ namespace efk
     virtual void BeginScene(THIS) override;
     virtual void EndScene(THIS) override;
 
-    void UpdateCamera();
-    void UpdateProjection();
+    void UpdateCamera() const;
+    void UpdateProjection() const;
     EffekseerRendererDX9::Renderer* g_renderer;
     Effekseer::Manager* g_manager;
     //Effekseer::Handle g_handle;
@@ -52,8 +53,9 @@ namespace efk
   };
 }
 
-extern "C" {
-  MMD_PLUGIN_API int version() { return 1; }
-  MMD_PLUGIN_API MMDPluginDLL1* create1(IDirect3DDevice9* device) { return new efk::D3D9DeviceEffekserr(device); }
-  MMD_PLUGIN_API void destroy1(MMDPluginDLL1* p) { return delete p; }
+extern "C"
+{
+  MMD_PLUGIN_API int version();
+  MMD_PLUGIN_API MMDPluginDLL1* create1(IDirect3DDevice9* device);
+  MMD_PLUGIN_API void destroy1(MMDPluginDLL1* p);
 }

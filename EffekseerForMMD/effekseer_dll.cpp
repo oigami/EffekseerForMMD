@@ -1,13 +1,10 @@
-﻿
-#define WIN32_LEAN_AND_MEAN
+﻿#define WIN32_LEAN_AND_MEAN
 #define NOMINMAX
 #include <Windows.h>
 #include <conio.h>
 #include <shellapi.h>
 
-#include <iostream>
 #include <unordered_map>
-#include <vector>
 #include <experimental/filesystem>
 namespace filesystem = std::experimental::filesystem;
 #include <effekseer/include/Effekseer.h>
@@ -30,7 +27,7 @@ namespace filesystem = std::experimental::filesystem;
 #include <mmd/MMDExport.h>
 
 void* RewriteFunction(const char* szRewriteModuleName, const char* szRewriteFunctionName, void* pRewriteFunctionPointer, int ordinal = -1);
-void modifyIAT(char *modname, void *origaddr, void *newaddr);
+void modifyIAT(char* modname, void* origaddr, void* newaddr);
 HMODULE dllModule();
 
 namespace efk
@@ -38,6 +35,7 @@ namespace efk
   namespace
   {
     bool nowEFKLoading = false;
+
     Effekseer::Matrix44 toMatrix4x4(const D3DMATRIX& mat)
     {
       Effekseer::Matrix44 ans;
@@ -50,6 +48,7 @@ namespace efk
       }
       return ans;
     }
+
     Effekseer::Matrix43 toMatrix4x3(const D3DMATRIX& mat)
     {
       Effekseer::Matrix43 ans;
@@ -63,8 +62,10 @@ namespace efk
       return ans;
     }
   }
+
   void HookAPI();
-  D3D9DeviceEffekserr::D3D9DeviceEffekserr(IDirect3DDevice9 * device) :device(device), now_present(false)
+
+  D3D9DeviceEffekserr::D3D9DeviceEffekserr(IDirect3DDevice9* device) : now_present(false), device(device)
   {
     HookAPI();
     g_renderer = ::EffekseerRendererDX9::Renderer::Create(device, 10000);
@@ -96,10 +97,9 @@ namespace efk
 
     // 投影行列を設定
     g_renderer->SetProjectionMatrix(
-      ::Effekseer::Matrix44().PerspectiveFovRH(90.0f / 180.0f * 3.14f, (float) 1024 / (float) 768, 1.0f, 500000.0f));
-
-
+      ::Effekseer::Matrix44().PerspectiveFovRH(90.0f / 180.0f * 3.14f, 1024.0f / 768.0f, 1.0f, 500000.0f));
   }
+
   void fps()
   {
     int i;
@@ -111,8 +111,7 @@ namespace efk
     if ( count % 60 == 59 )
     {
       ave = 0;
-      for ( i = 0; i < 60; i++ )
-        ave += f[i];
+      for ( i = 0; i < 60; i++ ) ave += f[i];
       ave /= 60;
     }
     if ( ave != 0 )
@@ -122,59 +121,59 @@ namespace efk
     }
     return;
   }
+
   void D3D9DeviceEffekserr::DrawIndexedPrimitive(D3DPRIMITIVETYPE Type, INT BaseVertexIndex, UINT MinVertexIndex, UINT NumVertices, UINT startIndex, UINT primCount)
   {
-
     const int pmd_num = ExpGetPmdNum();
     const int technic_type = ExpGetCurrentTechnic();
     const int now_render_object = ExpGetCurrentObject();
     const int now_render_material = ExpGetCurrentMaterial();
     if ( D3DPT_LINELIST != Type && now_render_material == 0 && now_render_object != 0
-        && !now_present && (technic_type == 1 || technic_type == 2) ) for ( int i = 0; i < pmd_num; i++ )
-    {
-      if ( now_render_object != ExpGetPmdOrder(i) ) continue;
-
-      UpdateCamera();
-      const int ID = ExpGetPmdID(i);
-      auto it = effect.find(ID);
-      if ( it != effect.end() )
+      && !now_present && (technic_type == 1 || technic_type == 2) )
+      for ( int i = 0; i < pmd_num; i++ )
       {
-        auto center = ExpGetPmdBoneWorldMat(i, 0);
-        auto play_mat = ExpGetPmdBoneWorldMat(i, 1);
-        double play_time = 0.0;
-        play_time += pow((double) center.m[3][0] - play_mat.m[3][0], 2);
-        play_time += pow((double) center.m[3][1] - play_mat.m[3][1], 2);
-        play_time += pow((double) center.m[3][2] - play_mat.m[3][2], 2);
-        play_time = sqrt(play_time) - 0.5;
+        if ( now_render_object != ExpGetPmdOrder(i) ) continue;
 
-        it->second.update(static_cast<float>(play_time));
-        auto mat = toMatrix4x3(center);
-        it->second.setMatrix(center);
+        UpdateCamera();
+        const int ID = ExpGetPmdID(i);
+        auto it = effect.find(ID);
+        if ( it != effect.end() )
+        {
+          auto center = ExpGetPmdBoneWorldMat(i, 0);
+          auto play_mat = ExpGetPmdBoneWorldMat(i, 1);
+          double play_time = 0.0;
+          play_time += pow(static_cast<double>(center.m[3][0]) - play_mat.m[3][0], 2);
+          play_time += pow(static_cast<double>(center.m[3][1]) - play_mat.m[3][1], 2);
+          play_time += pow(static_cast<double>(center.m[3][2]) - play_mat.m[3][2], 2);
+          play_time = sqrt(play_time) - 0.5;
+
+          it->second.update(static_cast<float>(play_time));
+          it->second.setMatrix(center);
+        }
       }
-    }
   }
 
   void D3D9DeviceEffekserr::BeginScene(void)
   {
     int len = len = ExpGetPmdNum();
-    if ( len != effect.size() ) for ( int i = 0; i < len; i++ )
-    {
-
-      const int id = ExpGetPmdID(i);
-      const auto file_name = ExpGetPmdFilename(i);
-      filesystem::path path(file_name);
-      if ( ".efk" == path.extension() )
+    if ( len != effect.size() )
+      for ( int i = 0; i < len; i++ )
       {
-        auto it = effect.insert({ id, MyEffect() });
-        if ( !it.second ) continue;
+        const int id = ExpGetPmdID(i);
+        const auto file_name = ExpGetPmdFilename(i);
+        filesystem::path path(file_name);
+        if ( ".efk" == path.extension() )
+        {
+          auto it = effect.insert({ id, MyEffect() });
+          if ( !it.second ) continue;
 
-        // エフェクトの読込
-        nowEFKLoading = true;
-        auto eff = Effekseer::Effect::Create(g_manager, (const EFK_CHAR*) (path.remove_filename() / path.stem().stem()).c_str());
-        nowEFKLoading = false;
-        it.first->second = MyEffect(g_manager, eff);
+          // エフェクトの読込
+          nowEFKLoading = true;
+          auto eff = Effekseer::Effect::Create(g_manager, reinterpret_cast<const EFK_CHAR*>((path.remove_filename() / path.stem().stem()).c_str()));
+          nowEFKLoading = false;
+          it.first->second = MyEffect(g_manager, eff);
+        }
       }
-    }
   }
 
   void D3D9DeviceEffekserr::EndScene(void)
@@ -206,7 +205,7 @@ namespace efk
   }
 
 
-  void D3D9DeviceEffekserr::UpdateCamera()
+  void D3D9DeviceEffekserr::UpdateCamera() const
   {
     D3DMATRIX view, world;
     device->GetTransform(D3DTS_WORLD, &world);
@@ -223,14 +222,14 @@ namespace efk
     //eworld.Values[3][2] = eview.Values[3][2];
     Effekseer::Matrix44::Mul(o, eworld, eview);
 
-    auto toVec = [](float(&a)[4])
-    {
-      return Effekseer::Vector3D(a[0], a[1], a[2]);
-    };
+    auto toVec = [](float (&a)[4])
+      {
+        return Effekseer::Vector3D(a[0], a[1], a[2]);
+      };
     g_renderer->SetCameraMatrix(o);
   }
 
-  void D3D9DeviceEffekserr::UpdateProjection()
+  void D3D9DeviceEffekserr::UpdateProjection() const
   {
     D3DMATRIX projection;
     device->GetTransform(D3DTS_PROJECTION, &projection);
@@ -246,20 +245,16 @@ namespace efk
     g_renderer->SetProjectionMatrix(mat);
   }
 
-  MyEffect::MyEffect() :now_frame(0), manager(nullptr), effect(nullptr), handle(-1)
-  {
-  }
+  MyEffect::MyEffect() : now_frame(0), manager(nullptr), handle(-1), effect(nullptr) { }
 
-  MyEffect::MyEffect(Effekseer::Manager* manager, Effekseer::Effect * effect) : manager(manager), effect(effect)
+  MyEffect::MyEffect(Effekseer::Manager* manager, Effekseer::Effect* effect) : manager(manager), effect(effect)
   {
     create();
   }
 
-  MyEffect::~MyEffect()
-  {
-  }
+  MyEffect::~MyEffect() { }
 
-  void MyEffect::setMatrix(const D3DMATRIX & mat)
+  void MyEffect::setMatrix(const D3DMATRIX& mat) const
   {
     auto mat4x3 = toMatrix4x3(mat);
     manager->BeginUpdate();
@@ -278,7 +273,7 @@ namespace efk
     }
     else ifCreate();
 #if 1
-    const int len = std::min((int)1e9, static_cast<int>(new_frame - now_frame));
+    const int len = std::min(static_cast<int>(1e9), static_cast<int>(new_frame - now_frame));
     for ( int i = 0; i < len; i++ )
     {
       manager->BeginUpdate();
@@ -293,7 +288,7 @@ namespace efk
     manager->EndUpdate();
     now_frame = new_frame;
 #endif
-    }
+  }
 
   void MyEffect::draw() const
   {
@@ -302,14 +297,12 @@ namespace efk
 
   void MyEffect::ifCreate()
   {
-    if ( !manager->Exists(handle) )
-      create();
+    if ( !manager->Exists(handle) ) create();
   }
 
   void MyEffect::create()
   {
-    if ( manager->Exists(handle) )
-      manager->StopEffect(handle);
+    if ( manager->Exists(handle) ) manager->StopEffect(handle);
     handle = manager->Play(effect, 0.0f, 0.0f, 0.0f);
     manager->Flip();
     now_frame = 0.0;
@@ -321,9 +314,9 @@ namespace efk
                                           result my##name (__VA_ARGS__); namespace hook_rewrite { void Rewrite##name(){printf("LoadLibrary %s:%d\n", dllname ,LoadLibrary(dllname ".dll")); PF##name= (F##name) RewriteFunction(dllname, #name, my##name); }}\
                                           result my##name (__VA_ARGS__)
 #define HOOK_KERNEL32_CREATE_FUNC(result, name, ...) HOOK_CREATE_FUNC("Kernel32", result, name, __VA_ARGS__)
+
   namespace
   {
-
     HOOK_KERNEL32_CREATE_FUNC(BOOL, CloseHandle, HANDLE hObject)
     {
       printf("CloseHandle: %d\n", hObject);
@@ -332,27 +325,28 @@ namespace efk
 
 
     HOOK_KERNEL32_CREATE_FUNC(HANDLE, CreateFileA, LPCSTR lpFileName,
-                              DWORD dwDesiredAccess,
-                              DWORD dwShareMode,
-                              LPSECURITY_ATTRIBUTES lpSecurityAttributes,
-                              DWORD dwCreationDisposition,
-                              DWORD dwFlagsAndAttributes,
-                              HANDLE hTemplateFile)
+      DWORD dwDesiredAccess,
+      DWORD dwShareMode,
+      LPSECURITY_ATTRIBUTES lpSecurityAttributes,
+      DWORD dwCreationDisposition,
+      DWORD dwFlagsAndAttributes,
+      HANDLE hTemplateFile)
     {
       puts(lpFileName);
       return PFCreateFileA(lpFileName, dwDesiredAccess, dwShareMode, lpSecurityAttributes, dwCreationDisposition, dwFlagsAndAttributes, hTemplateFile);
     }
+
     HOOK_KERNEL32_CREATE_FUNC(HANDLE, CreateFileW, LPCWSTR lpFileName,
-                              DWORD dwDesiredAccess,
-                              DWORD dwShareMode,
-                              LPSECURITY_ATTRIBUTES lpSecurityAttributes,
-                              DWORD dwCreationDisposition,
-                              DWORD dwFlagsAndAttributes,
-                              HANDLE hTemplateFile)
+      DWORD dwDesiredAccess,
+      DWORD dwShareMode,
+      LPSECURITY_ATTRIBUTES lpSecurityAttributes,
+      DWORD dwCreationDisposition,
+      DWORD dwFlagsAndAttributes,
+      HANDLE hTemplateFile)
     {
       filesystem::path path(lpFileName);
       char Path[MAX_PATH + 1];
-      if ( !nowEFKLoading &&  path.extension() == L".efk" )
+      if ( !nowEFKLoading && path.extension() == L".efk" )
       {
         if ( 0 != GetModuleFileNameA(dllModule(), Path, MAX_PATH) )
         {// 実行ファイルの完全パスを取得
@@ -368,20 +362,21 @@ namespace efk
     }
 
     HOOK_KERNEL32_CREATE_FUNC(BOOL, ReadFile,
-                              HANDLE hFile,                // ファイルのハンドル
-                              LPVOID lpBuffer,             // データバッファ
-                              DWORD nNumberOfBytesToRead,  // 読み取り対象のバイト数
-                              LPDWORD lpNumberOfBytesRead, // 読み取ったバイト数
-                              LPOVERLAPPED lpOverlapped)    // オーバーラップ構造体のバッファ
+      HANDLE hFile, // ファイルのハンドル
+      LPVOID lpBuffer, // データバッファ
+      DWORD nNumberOfBytesToRead, // 読み取り対象のバイト数
+      LPDWORD lpNumberOfBytesRead, // 読み取ったバイト数
+      LPOVERLAPPED lpOverlapped) // オーバーラップ構造体のバッファ
     {
       //printf("ReadFile %d : %d\n", hFile, nNumberOfBytesToRead);
       return PFReadFile(hFile, lpBuffer, nNumberOfBytesToRead, lpNumberOfBytesRead, lpOverlapped);
     }
+
     HOOK_KERNEL32_CREATE_FUNC(DWORD, SetFilePointer,
-                              HANDLE hFile,                // ファイルのハンドル
-                              LONG lDistanceToMove,        // ポインタを移動するべきバイト数
-                              PLONG lpDistanceToMoveHigh,  // ポインタを移動するべきバイト数
-                              DWORD dwMoveMethod)           // 開始点
+      HANDLE hFile, // ファイルのハンドル
+      LONG lDistanceToMove, // ポインタを移動するべきバイト数
+      PLONG lpDistanceToMoveHigh, // ポインタを移動するべきバイト数
+      DWORD dwMoveMethod) // 開始点
     {
       printf("setpointer: %d %d  ,%d\n", lpDistanceToMoveHigh, lDistanceToMove, dwMoveMethod);
       return PFSetFilePointer(hFile, lDistanceToMove, lpDistanceToMoveHigh, dwMoveMethod);
@@ -389,13 +384,12 @@ namespace efk
 
 
     HOOK_CREATE_FUNC("Shell32", UINT, DragQueryFileW,
-                     HDROP hDrop, // ファイル名構造体のハンドル
-                     UINT iFile, // ファイルのインデックス番号
-                     LPWSTR lpszFile, // ファイル名を格納するバッファ
-                     UINT cch // バッファのサイズ
+      HDROP hDrop, // ファイル名構造体のハンドル
+      UINT iFile, // ファイルのインデックス番号
+      LPWSTR lpszFile, // ファイル名を格納するバッファ
+      UINT cch // バッファのサイズ
     )
     {
-
       auto res = PFDragQueryFileW(hDrop, iFile, lpszFile, cch);
       filesystem::path path(lpszFile);
       if ( path.extension() == L".efk" )
@@ -407,7 +401,6 @@ namespace efk
           std::string error_msg = "ファイルパスが長過ぎます。\nディレクトリ名やファイル名を短くするか、階層を少なくしてください\n\nファイルパス:\n"s + path.string();
 
           MessageBoxA(nullptr, error_msg.c_str(), "Effekseer on MMD", MB_OK | MB_ICONWARNING);
-
         }
         else
         {
@@ -420,7 +413,7 @@ namespace efk
     }
 
     HOOK_CREATE_FUNC("Shell32", VOID, DragFinish,
-                     HDROP hDrop)
+      HDROP hDrop)
     {
       return PFDragFinish(hDrop);
     }
@@ -434,13 +427,14 @@ namespace efk
     hook_rewrite::RewriteSetFilePointer();
     //hook_rewrite::RewriteDragFinish();
     HMODULE handle = LoadLibrary("shell32.dll");
-    PFDragQueryFileW = (FDragQueryFileW) GetProcAddress(handle, "DragQueryFileW");
+    PFDragQueryFileW = reinterpret_cast<FDragQueryFileW>(GetProcAddress(handle, "DragQueryFileW"));
     modifyIAT("shell32.dll", PFDragQueryFileW, myDragQueryFileW);
 
-    PFDragFinish = (FDragFinish) GetProcAddress(handle, "DragFinish");
+    PFDragFinish = reinterpret_cast<FDragFinish>(GetProcAddress(handle, "DragFinish"));
     modifyIAT("shell32.dll", PFDragFinish, myDragFinish);
-
   }
+}
 
-
-  }
+int version() { return 1; }
+MMDPluginDLL1* create1(IDirect3DDevice9* device) { return new efk::D3D9DeviceEffekserr(device); }
+void destroy1(MMDPluginDLL1* p) { return delete p; }

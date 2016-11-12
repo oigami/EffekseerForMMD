@@ -1,6 +1,7 @@
 #pragma once
 #include <d3d9.h>
 #define MMD_PLUGIN_API __declspec(dllexport)
+
 class MMDPluginDLL1
 {
 public:
@@ -23,7 +24,7 @@ public:
   virtual void GetDirect3D(IDirect3D9** ppD3D9) {}
   virtual void GetDeviceCaps(D3DCAPS9* pCaps) {}
   virtual void GetDisplayMode(UINT iSwapChain, D3DDISPLAYMODE* pMode) {}
-  virtual void GetCreationParameters(D3DDEVICE_CREATION_PARAMETERS *pParameters) {}
+  virtual void GetCreationParameters(D3DDEVICE_CREATION_PARAMETERS* pParameters) {}
   virtual void SetCursorProperties(UINT XHotSpot, UINT YHotSpot, IDirect3DSurface9* pCursorBitmap) {}
   virtual void SetCursorPosition(int X, int Y, DWORD Flags) {}
   virtual void ShowCursor(BOOL bShow) {}
@@ -88,7 +89,7 @@ public:
   virtual void SetPaletteEntries(UINT PaletteNumber, CONST PALETTEENTRY* pEntries) {}
   virtual void GetPaletteEntries(UINT PaletteNumber, PALETTEENTRY* pEntries) {}
   virtual void SetCurrentTexturePalette(UINT PaletteNumber) {}
-  virtual void GetCurrentTexturePalette(UINT *PaletteNumber) {}
+  virtual void GetCurrentTexturePalette(UINT* PaletteNumber) {}
   virtual void SetScissorRect(CONST RECT* pRect) {}
   virtual void GetScissorRect(RECT* pRect) {}
   virtual void SetSoftwareVertexProcessing(BOOL bSoftware) {}
@@ -112,7 +113,7 @@ public:
   virtual void GetVertexShaderConstantF(UINT StartRegister, float* pConstantData, UINT Vector4fCount) {}
   virtual void SetVertexShaderConstantI(UINT StartRegister, CONST int* pConstantData, UINT Vector4iCount) {}
   virtual void GetVertexShaderConstantI(UINT StartRegister, int* pConstantData, UINT Vector4iCount) {}
-  virtual void SetVertexShaderConstantB(UINT StartRegister, CONST BOOL* pConstantData, UINT  BoolCount) {}
+  virtual void SetVertexShaderConstantB(UINT StartRegister, CONST BOOL* pConstantData, UINT BoolCount) {}
   virtual void GetVertexShaderConstantB(UINT StartRegister, BOOL* pConstantData, UINT BoolCount) {}
   virtual void SetStreamSource(UINT StreamNumber, IDirect3DVertexBuffer9* pStreamData, UINT OffsetInBytes, UINT Stride) {}
   virtual void GetStreamSource(UINT StreamNumber, IDirect3DVertexBuffer9** ppStreamData, UINT* pOffsetInBytes, UINT* pStride) {}
@@ -127,7 +128,7 @@ public:
   virtual void GetPixelShaderConstantF(UINT StartRegister, float* pConstantData, UINT Vector4fCount) {}
   virtual void SetPixelShaderConstantI(UINT StartRegister, CONST int* pConstantData, UINT Vector4iCount) {}
   virtual void GetPixelShaderConstantI(UINT StartRegister, int* pConstantData, UINT Vector4iCount) {}
-  virtual void SetPixelShaderConstantB(UINT StartRegister, CONST BOOL* pConstantData, UINT  BoolCount) {}
+  virtual void SetPixelShaderConstantB(UINT StartRegister, CONST BOOL* pConstantData, UINT BoolCount) {}
   virtual void GetPixelShaderConstantB(UINT StartRegister, BOOL* pConstantData, UINT BoolCount) {}
   virtual void DrawRectPatch(UINT Handle, CONST float* pNumSegs, CONST D3DRECTPATCH_INFO* pRectPatchInfo) {}
   virtual void DrawTriPatch(UINT Handle, CONST float* pNumSegs, CONST D3DTRIPATCH_INFO* pTriPatchInfo) {}
@@ -139,5 +140,5 @@ extern "C"
 {
   MMD_PLUGIN_API int version();
   MMD_PLUGIN_API MMDPluginDLL1* create1(IDirect3DDevice9* device);
-  MMD_PLUGIN_API void destroy1(MMDPluginDLL1*p);
+  MMD_PLUGIN_API void destroy1(MMDPluginDLL1* p);
 }

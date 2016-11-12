@@ -9,7 +9,7 @@ LPVOID RvaToVa(LPVOID pvBase, DWORD dwRva)
   return static_cast<LPBYTE>(pvBase) + dwRva;
 }
 
-LPVOID RvaToVa(LPVOID pvBase, DWORD dwRva, BOOL bLoaded, IMAGE_SECTION_HEADER ** ppSectionHeader = nullptr)
+LPVOID RvaToVa(LPVOID pvBase, DWORD dwRva, BOOL bLoaded, IMAGE_SECTION_HEADER** ppSectionHeader = nullptr)
 {
   auto va = static_cast<LPBYTE>(RvaToVa(pvBase, dwRva));
 
@@ -18,7 +18,7 @@ LPVOID RvaToVa(LPVOID pvBase, DWORD dwRva, BOOL bLoaded, IMAGE_SECTION_HEADER **
     auto pNtHeaders = ImageNtHeader(pvBase);
     auto pSectionHeader = IMAGE_FIRST_SECTION(pNtHeaders);
 
-    for ( int i = 0; i < pNtHeaders->FileHeader.NumberOfSections; ++i, ++pSectionHeader )
+    for ( int i = 0; i < pNtHeaders->FileHeader.NumberOfSections; ++i , ++pSectionHeader )
     {
       auto pSection = static_cast<LPBYTE>(RvaToVa(pvBase, pSectionHeader->VirtualAddress));
       if ( pSection <= va && va < (pSection + pSectionHeader->SizeOfRawData) )
@@ -38,10 +38,10 @@ LPVOID RvaToVa(LPVOID pvBase, DWORD dwRva, BOOL bLoaded, IMAGE_SECTION_HEADER **
 
   return va;
 }
+
 void* RewriteFunction(const char* szRewriteModuleName, const char* szRewriteFunctionName, void* pRewriteFunctionPointer, int ordinal)
 {
-  HMODULE dwBase = 0;
-  dwBase = (HMODULE)::GetModuleHandleA(szRewriteModuleName);
+  auto dwBase = static_cast<HMODULE>(::GetModuleHandleA(szRewriteModuleName));
 
   if ( !dwBase )
   {
@@ -49,16 +49,14 @@ void* RewriteFunction(const char* szRewriteModuleName, const char* szRewriteFunc
   }
 
   ULONG ulSize = 0;
-  PIMAGE_IMPORT_DESCRIPTOR pImgDesc = (PIMAGE_IMPORT_DESCRIPTOR) ImageDirectoryEntryToData(dwBase, TRUE, IMAGE_DIRECTORY_ENTRY_IMPORT, &ulSize);
+  PIMAGE_IMPORT_DESCRIPTOR pImgDesc = static_cast<PIMAGE_IMPORT_DESCRIPTOR>(ImageDirectoryEntryToData(dwBase, TRUE, IMAGE_DIRECTORY_ENTRY_IMPORT, &ulSize));
   for ( ; pImgDesc->Characteristics != 0; pImgDesc++ )
   {
-    const char* szModuleName = (char*) ((BYTE*) dwBase + pImgDesc->Name);
-
     // THUNK情報
-    PIMAGE_THUNK_DATA pFirstThunk = (PIMAGE_THUNK_DATA) RvaToVa(dwBase, pImgDesc->FirstThunk, TRUE);
-    PIMAGE_THUNK_DATA pOrgFirstThunk = (PIMAGE_THUNK_DATA) RvaToVa(dwBase, pImgDesc->OriginalFirstThunk, TRUE);
+    auto pFirstThunk = static_cast<PIMAGE_THUNK_DATA>(RvaToVa(dwBase, pImgDesc->FirstThunk, TRUE));
+    auto pOrgFirstThunk = static_cast<PIMAGE_THUNK_DATA>(RvaToVa(dwBase, pImgDesc->OriginalFirstThunk, TRUE));
     // 関数列挙
-    for ( ; pFirstThunk && pOrgFirstThunk && pFirstThunk->u1.Function; pFirstThunk++, pOrgFirstThunk++ )
+    for ( ; pFirstThunk && pOrgFirstThunk && pFirstThunk->u1.Function; pFirstThunk++ , pOrgFirstThunk++ )
     {
       bool ok = false;
       if ( IMAGE_SNAP_BY_ORDINAL(pOrgFirstThunk->u1.Ordinal) )
@@ -66,28 +64,25 @@ void* RewriteFunction(const char* szRewriteModuleName, const char* szRewriteFunc
         int tmp = IMAGE_ORDINAL(pOrgFirstThunk->u1.Ordinal);
         ok = tmp == ordinal;
       }
-      PIMAGE_IMPORT_BY_NAME pImportName = (PIMAGE_IMPORT_BY_NAME) RvaToVa(dwBase, pOrgFirstThunk->u1.AddressOfData, TRUE);
+      auto pImportName = static_cast<PIMAGE_IMPORT_BY_NAME>(RvaToVa(dwBase, pOrgFirstThunk->u1.AddressOfData, TRUE));
 
       if ( !szRewriteFunctionName )
       {
         continue;
       }
 
-      if ( !ok && strcmp((const char*) pImportName->Name, szRewriteFunctionName) != 0 )
-        continue;
+      if ( !ok && strcmp(static_cast<const char*>(pImportName->Name), szRewriteFunctionName) != 0 ) continue;
 
       DWORD dwOldProtect;
       if ( !VirtualProtect(&pFirstThunk->u1.Function, sizeof(pFirstThunk->u1.Function), PAGE_READWRITE, &dwOldProtect) )
       {
         puts("VirtualProtect error");
-        return NULL; // エラー
+        return nullptr; // エラー
       }
 
-      void* pOrgFunc = (void*) (intptr_t) pFirstThunk->u1.Function;
+      auto pOrgFunc = reinterpret_cast<void*>(static_cast<intptr_t>(pFirstThunk->u1.Function));
 
-      if ( WriteProcessMemory(GetCurrentProcess(), &pFirstThunk->u1.Function, &pRewriteFunctionPointer, sizeof(pFirstThunk->u1.Function), NULL) )
-      {
-      }
+      if ( WriteProcessMemory(GetCurrentProcess(), &pFirstThunk->u1.Function, &pRewriteFunctionPointer, sizeof(pFirstThunk->u1.Function), nullptr) ) { }
       else
       {
         puts("WriteProcessMemory error");
@@ -98,23 +93,22 @@ void* RewriteFunction(const char* szRewriteModuleName, const char* szRewriteFunc
     }
   }
   printf("not found : module = %s ,funcname = %s\n", szRewriteModuleName, szRewriteFunctionName);
-  return NULL;
+  return nullptr;
 }
 
 void PrintFunctions()
 {
   printf("----\n");
-  RewriteFunction(NULL, NULL, NULL, -1);
+  RewriteFunction(nullptr, nullptr, nullptr, -1);
   printf("----\n");
 }
 
 
-void modifyIATonemod(char *modname, void *origaddr, void *newaddr, HMODULE hModule)
+void modifyIATonemod(char* modname, void* origaddr, void* newaddr, HMODULE hModule)
 {
   ULONG ulSize;
-  PIMAGE_IMPORT_DESCRIPTOR pImportDesc;
-  pImportDesc = (PIMAGE_IMPORT_DESCRIPTOR) ImageDirectoryEntryToData(hModule, TRUE, IMAGE_DIRECTORY_ENTRY_IMPORT, &ulSize);
-  if ( pImportDesc == NULL )
+  auto pImportDesc = static_cast<PIMAGE_IMPORT_DESCRIPTOR>(ImageDirectoryEntryToData(hModule, TRUE, IMAGE_DIRECTORY_ENTRY_IMPORT, &ulSize));
+  if ( pImportDesc == nullptr )
   {
     return;
   }
@@ -122,8 +116,8 @@ void modifyIATonemod(char *modname, void *origaddr, void *newaddr, HMODULE hModu
   /* seek the target DLL */
   while ( pImportDesc->Name )
   {
-    char *name = (char*) hModule + pImportDesc->Name;
-    if ( lstrcmpi(name, modname) == 0 )
+    char* name = reinterpret_cast<char*>(hModule) + pImportDesc->Name;
+    if ( lstrcmpiA(name, modname) == 0 )
     {
       break;
     }
@@ -135,22 +129,22 @@ void modifyIATonemod(char *modname, void *origaddr, void *newaddr, HMODULE hModu
   }
 
   /* modify corrensponding IAT entry */
-  PIMAGE_THUNK_DATA pThunk = (PIMAGE_THUNK_DATA) ((char *) hModule + pImportDesc->FirstThunk);
+  auto pThunk = reinterpret_cast<PIMAGE_THUNK_DATA>(reinterpret_cast<char *>(hModule) + pImportDesc->FirstThunk);
   while ( pThunk->u1.Function )
   {
-    PROC *paddr = (PROC*) &pThunk->u1.Function;
+    auto paddr = reinterpret_cast<PROC*>(&pThunk->u1.Function);
     if ( *paddr == origaddr )
     {
       DWORD flOldProtect;
       VirtualProtect(paddr, sizeof(paddr), PAGE_EXECUTE_READWRITE, &flOldProtect);
-      *paddr = (PROC) newaddr;
+      *paddr = static_cast<PROC>(newaddr);
       VirtualProtect(paddr, sizeof(paddr), flOldProtect, &flOldProtect);
     }
     pThunk++;
   }
 }
 
-void modifyIAT(char *modname, void *origaddr, void *newaddr)
+void modifyIAT(char* modname, void* origaddr, void* newaddr)
 {
   HANDLE hModuleSnap = CreateToolhelp32Snapshot(TH32CS_SNAPMODULE, GetCurrentProcessId());
 
