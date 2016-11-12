@@ -40,6 +40,9 @@ namespace efk
 
     void UpdateCamera() const;
     void UpdateProjection() const;
+
+    void HookAPI();
+
     EffekseerRendererDX9::Renderer* g_renderer;
     Effekseer::Manager* g_manager;
     //Effekseer::Handle g_handle;

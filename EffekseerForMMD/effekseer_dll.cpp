@@ -63,7 +63,6 @@ namespace efk
     }
   }
 
-  void HookAPI();
 
   D3D9DeviceEffekserr::D3D9DeviceEffekserr(IDirect3DDevice9* device) : now_present(false), device(device)
   {
@@ -419,7 +418,7 @@ namespace efk
     }
   }
 
-  void HookAPI()
+  void D3D9DeviceEffekserr::HookAPI()
   {
     hook_rewrite::RewriteCreateFileW();
     hook_rewrite::RewriteCloseHandle();
@@ -432,6 +431,12 @@ namespace efk
 
     PFDragFinish = reinterpret_cast<FDragFinish>(GetProcAddress(handle, "DragFinish"));
     modifyIAT("shell32.dll", PFDragFinish, myDragFinish);
+
+    // メニューバーの追加
+    auto hwnd = getHWND();
+    auto hmenu = GetMenu(hwnd);
+    AppendMenuA(hmenu, MF_RIGHTJUSTIFY | MFS_GRAYED | MFS_DISABLED, 10000001, "Effekseer");
+    DrawMenuBar(hwnd);
   }
 }
 
