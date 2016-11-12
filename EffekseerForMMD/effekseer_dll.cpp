@@ -344,13 +344,20 @@ namespace efk
       HANDLE hTemplateFile)
     {
       filesystem::path path(lpFileName);
-      char Path[MAX_PATH + 1];
       if ( !nowEFKLoading && path.extension() == L".efk" )
       {
-        if ( 0 != GetModuleFileNameA(dllModule(), Path, MAX_PATH) )
-        {// 実行ファイルの完全パスを取得
+        char module_path[MAX_PATH + 1];
+        path = path.parent_path() / path.stem().stem().replace_extension(".pmd");
 
-          path = filesystem::path(Path).parent_path() / L"efk.pmd";
+        // efkファイルの場所に同名のpmdファイルが有る場合そのファイルを優先
+        if ( filesystem::exists(path) )
+        {
+          lpFileName = path.c_str();
+        }
+        else if ( 0 != GetModuleFileNameA(dllModule(), module_path, MAX_PATH) )
+        {
+          // dllの場所にあるファイルを使用
+          path = filesystem::path(module_path).parent_path() / L"efk.pmd";
           lpFileName = path.c_str();
         }
       }
