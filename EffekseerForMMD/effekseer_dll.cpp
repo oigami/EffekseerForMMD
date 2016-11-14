@@ -273,12 +273,9 @@ namespace efk
 
   MyEffect::~MyEffect() { }
 
-  void MyEffect::setMatrix(const D3DMATRIX& mat) const
+  void MyEffect::setMatrix(const D3DMATRIX& mat)
   {
-    auto mat4x3 = toMatrix4x3(mat);
-    manager->BeginUpdate();
-    manager->SetBaseMatrix(handle, mat4x3);
-    manager->EndUpdate();
+    base_matrix = toMatrix4x3(mat);
   }
 
   void MyEffect::update(float new_frame)
@@ -287,6 +284,7 @@ namespace efk
     if ( now_frame > new_frame + eps )
     {
       manager->StopEffect(handle);
+      handle = -1;
       now_frame = new_frame;
       return;
     }
@@ -296,6 +294,7 @@ namespace efk
     for ( int i = 0; i < len; i++ )
     {
       manager->BeginUpdate();
+      manager->SetBaseMatrix(handle, base_matrix);
       manager->UpdateHandle(handle);
       manager->EndUpdate();
     }
@@ -304,6 +303,7 @@ namespace efk
     if ( len == 0 )
     {
       manager->BeginUpdate();
+      manager->SetBaseMatrix(handle, base_matrix);
       manager->UpdateHandle(handle, 0.0f);
       manager->EndUpdate();
     }
@@ -317,7 +317,7 @@ namespace efk
 
   void MyEffect::draw() const
   {
-    manager->DrawHandle(handle);
+    if ( handle != -1 ) manager->DrawHandle(handle);
   }
 
   void MyEffect::ifCreate()

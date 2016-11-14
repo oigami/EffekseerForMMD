@@ -12,7 +12,7 @@ namespace efk
     MyEffect(Effekseer::Manager* manager, Effekseer::Effect* effect);
 
     ~MyEffect();
-    void setMatrix(const D3DMATRIX& mat) const;
+    void setMatrix(const D3DMATRIX& mat);
 
     void update(float delta_frame);
 
@@ -24,6 +24,7 @@ namespace efk
 
     void create();
 
+    Effekseer::Matrix43 base_matrix;
     float now_frame;
     Effekseer::Manager* manager;
     Effekseer::Handle handle;
