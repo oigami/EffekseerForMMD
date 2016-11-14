@@ -127,6 +127,7 @@ namespace efk
     const int technic_type = ExpGetCurrentTechnic();
     const int now_render_object = ExpGetCurrentObject();
     const int now_render_material = ExpGetCurrentMaterial();
+    UpdateProjection();
     if ( D3DPT_LINELIST != Type && now_render_material == 0 && now_render_object != 0
       && !now_present && (technic_type == 1 || technic_type == 2) )
       for ( int i = 0; i < pmd_num; i++ )
@@ -146,8 +147,24 @@ namespace efk
           play_time += pow(static_cast<double>(center.m[3][2]) - play_mat.m[3][2], 2);
           play_time = sqrt(play_time) - 0.5;
 
-          it->second.update(static_cast<float>(play_time));
           it->second.setMatrix(center);
+          it->second.update(static_cast<float>(play_time));
+
+          now_present = true;
+
+
+          // エフェクトの描画開始処理を行う。
+          if ( g_renderer->BeginRendering() )
+          {
+            // エフェクトの描画を行う。
+            it->second.draw();
+
+            // エフェクトの描画終了処理を行う。
+            g_renderer->EndRendering();
+          }
+
+
+          now_present = false;
         }
       }
   }
@@ -177,8 +194,6 @@ namespace efk
 
   void D3D9DeviceEffekserr::EndScene(void)
   {
-    now_present = true;
-    UpdateProjection();
     //g_renderer->SetCameraMatrix(Effekseer::Matrix44().Indentity());
     //UpdateCamera();
 
@@ -186,19 +201,6 @@ namespace efk
     //g_manager->AddLocation(g_handle, ::Effekseer::Vector3D(0.2f, 0.0f, 0.0f));
 
     // エフェクトの更新処理を行う
-    g_manager->Update(0.0f);
-
-    SetRenderState(D3DRS_ZENABLE, TRUE);
-
-    // エフェクトの描画開始処理を行う。
-    g_renderer->BeginRendering();
-
-    // エフェクトの描画を行う。
-    g_manager->Draw();
-
-    // エフェクトの描画終了処理を行う。
-    g_renderer->EndRendering();
-    now_present = false;
 
     printf("%f\n", ExpGetFrameTime());
   }
@@ -281,6 +283,12 @@ namespace efk
     }
     //manager->UpdateHandle(handle, new_frame - now_frame - len);
     now_frame += len;
+    if ( len == 0 )
+    {
+      manager->BeginUpdate();
+      manager->UpdateHandle(handle, 0.0f);
+      manager->EndUpdate();
+    }
 #else
     manager->BeginUpdate();
     manager->UpdateHandle(handle, new_frame - now_frame);
