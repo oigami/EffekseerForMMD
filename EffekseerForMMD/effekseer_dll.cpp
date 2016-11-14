@@ -152,6 +152,17 @@ namespace efk
 
           now_present = true;
 
+          // Effekseerライブラリがリストアしてくれないので自前でバックアップしてる
+          float constant_data[256 * 4];
+          device->GetVertexShaderConstantF(0, constant_data, sizeof(constant_data) / sizeof(float) / 4);
+
+          UINT stride;
+          IDirect3DVertexBuffer9* stream_data;
+          UINT offset;
+          device->GetStreamSource(0, &stream_data, &offset, &stride);
+
+          IDirect3DIndexBuffer9* index_data;
+          device->GetIndices(&index_data);
 
           // エフェクトの描画開始処理を行う。
           if ( g_renderer->BeginRendering() )
@@ -163,6 +174,13 @@ namespace efk
             g_renderer->EndRendering();
           }
 
+          device->SetStreamSource(0, stream_data, offset, stride);
+          if ( stream_data ) stream_data->Release();
+
+          device->SetIndices(index_data);
+          if ( index_data ) index_data->Release();
+
+          device->SetVertexShaderConstantF(0, constant_data, sizeof(constant_data) / sizeof(float) / 4);
 
           now_present = false;
         }
