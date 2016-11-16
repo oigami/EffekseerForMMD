@@ -513,7 +513,7 @@ namespace efk
     is_device_reset_ = true;
   }
 
-  void D3D9DeviceEffekserr::TestCooperativeLevel()
+  void D3D9DeviceEffekserr::PostReset(D3DPRESENT_PARAMETERS* pPresentationParameters, HRESULT& res)
   {
     if ( is_device_reset_ )
     {
@@ -523,6 +523,6 @@ namespace efk
   }
 }
 
-int version() { return 1; }
-MMDPluginDLL1* create1(IDirect3DDevice9* device) { return new efk::D3D9DeviceEffekserr(device); }
-void destroy1(MMDPluginDLL1* p) { return delete p; }
+int version() { return 2; }
+MMDPluginDLL2* create2(IDirect3DDevice9* device) { return new efk::D3D9DeviceEffekserr(device); }
+void destroy2(MMDPluginDLL2* p) { return delete p; }

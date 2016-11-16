@@ -31,7 +31,7 @@ namespace efk
     Effekseer::Effect* effect;
   };
 
-  struct D3D9DeviceEffekserr : MMDPluginDLL1
+  struct D3D9DeviceEffekserr : public MMDPluginDLL2
   {
     D3D9DeviceEffekserr(IDirect3DDevice9* device);
 
@@ -45,7 +45,7 @@ namespace efk
     void HookAPI();
 
     void Reset(D3DPRESENT_PARAMETERS* pPresentationParameters) override;
-    void TestCooperativeLevel() override;
+    void PostReset(D3DPRESENT_PARAMETERS* pPresentationParameters, HRESULT& res) override;
     EffekseerRendererDX9::Renderer* g_renderer;
     Effekseer::Manager* g_manager;
     //Effekseer::Handle g_handle;
