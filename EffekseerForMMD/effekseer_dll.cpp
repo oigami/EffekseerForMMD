@@ -64,7 +64,7 @@ namespace efk
   }
 
 
-  D3D9DeviceEffekserr::D3D9DeviceEffekserr(IDirect3DDevice9* device) : now_present(false), device(device)
+  D3D9DeviceEffekserr::D3D9DeviceEffekserr(IDirect3DDevice9* device) : now_present(false), device(device), is_device_reset_(false)
   {
     HookAPI();
     g_renderer = ::EffekseerRendererDX9::Renderer::Create(device, 10000);
@@ -506,8 +506,23 @@ namespace efk
     AppendMenuA(hmenu, MF_RIGHTJUSTIFY | MFS_GRAYED | MFS_DISABLED, 10000001, "Effekseer");
     DrawMenuBar(hwnd);
   }
+
+  void D3D9DeviceEffekserr::Reset(D3DPRESENT_PARAMETERS* pPresentationParameters)
+  {
+    g_renderer->OnLostDevice();
+    is_device_reset_ = true;
+  }
+
+  void D3D9DeviceEffekserr::PostReset(D3DPRESENT_PARAMETERS* pPresentationParameters, HRESULT& res)
+  {
+    if ( is_device_reset_ )
+    {
+      g_renderer->OnResetDevice();
+      is_device_reset_ = false;
+    }
+  }
 }
 
-int version() { return 1; }
-MMDPluginDLL1* create1(IDirect3DDevice9* device) { return new efk::D3D9DeviceEffekserr(device); }
-void destroy1(MMDPluginDLL1* p) { return delete p; }
+int version() { return 2; }
+MMDPluginDLL2* create2(IDirect3DDevice9* device) { return new efk::D3D9DeviceEffekserr(device); }
+void destroy2(MMDPluginDLL2* p) { return delete p; }

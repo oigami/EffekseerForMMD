@@ -5,16 +5,15 @@
 # define MMD_DLL_FUNC_API __declspec(dllexport)
 #else
 # define MMD_DLL_FUNC_API __declspec(dllimport)
-# pragma comment(lib,"MMDPlugin/mmd_plugin")
+# pragma comment(lib,"MMDPlugin/MMDPlugin")
 #endif // MAKE_MMD_PLUGIN
-
 
 extern "C"
 {
   MMD_DLL_FUNC_API HWND getHWND();
 }
 
-class MMDPluginDLL1
+struct MMDPluginDLL1
 {
 public:
 
@@ -148,9 +147,146 @@ public:
   virtual void CreateQuery(D3DQUERYTYPE Type, IDirect3DQuery9** ppQuery) {}
 };
 
+struct MMDPluginDLL2 : public MMDPluginDLL1
+{
+public:
+
+  // callback
+  // すべて実際の関数が呼ばれ後にコールバックされる
+  /*
+  // 内部実装
+  auto res = d3dDevice->QueryInterface(riid, ppvObj);
+  MMDPluginDLL2::PostQueryInterface(riid, ppvObj, res);
+
+  */
+  virtual void PostQueryInterface(REFIID riid, void** ppvObj, HRESULT& res) {}
+  virtual void PostAddRef(ULONG& res) {}
+  virtual void PostRelease(ULONG& res) {}
+  virtual void PostTestCooperativeLevel(HRESULT& res) {}
+  virtual void PostGetAvailableTextureMem(UINT& res) {}
+  virtual void PostEvictManagedResources(HRESULT& res) {}
+  virtual void PostGetDirect3D(IDirect3D9** ppD3D9, HRESULT& res) {}
+  virtual void PostGetDeviceCaps(D3DCAPS9* pCaps, HRESULT& res) {}
+  virtual void PostGetDisplayMode(UINT iSwapChain, D3DDISPLAYMODE* pMode, HRESULT& res) {}
+  virtual void PostGetCreationParameters(D3DDEVICE_CREATION_PARAMETERS* pParameters, HRESULT& res) {}
+  virtual void PostSetCursorProperties(UINT XHotSpot, UINT YHotSpot, IDirect3DSurface9* pCursorBitmap, HRESULT& res) {}
+  virtual void PostSetCursorPosition(int X, int Y, DWORD Flags) {}
+  virtual void PostShowCursor(BOOL bShow, BOOL& res) {}
+  virtual void PostCreateAdditionalSwapChain(D3DPRESENT_PARAMETERS* pPresentationParameters, IDirect3DSwapChain9** pSwapChain, HRESULT& res) {}
+  virtual void PostGetSwapChain(UINT iSwapChain, IDirect3DSwapChain9** pSwapChain, HRESULT& res) {}
+  virtual void PostGetNumberOfSwapChains(UINT& res) {}
+  virtual void PostReset(D3DPRESENT_PARAMETERS* pPresentationParameters, HRESULT& res) {}
+  virtual void PostPresent(CONST RECT* pSourceRect, CONST RECT* pDestRect, HWND hDestWindow, CONST RGNDATA* pDirtyRegion, HRESULT& res) {}
+  virtual void PostGetBackBuffer(UINT iSwapChain, UINT iBackBuffer, D3DBACKBUFFER_TYPE Type, IDirect3DSurface9** ppBackBuffer, HRESULT& res) {}
+  virtual void PostGetRasterStatus(UINT iSwapChain, D3DRASTER_STATUS* pRasterStatus, HRESULT& res) {}
+  virtual void PostSetDialogBoxMode(BOOL bEnableDialogs, HRESULT& res) {}
+  virtual void PostSetGammaRamp(UINT iSwapChain, DWORD Flags, CONST D3DGAMMARAMP* pRamp) {}
+  virtual void PostGetGammaRamp(UINT iSwapChain, D3DGAMMARAMP* pRamp) {}
+  virtual void PostCreateTexture(UINT Width, UINT Height, UINT Levels, DWORD Usage, D3DFORMAT Format, D3DPOOL Pool, IDirect3DTexture9** ppTexture, HANDLE* pSharedHandle, HRESULT& res) {}
+  virtual void PostCreateVolumeTexture(UINT Width, UINT Height, UINT Depth, UINT Levels, DWORD Usage, D3DFORMAT Format, D3DPOOL Pool, IDirect3DVolumeTexture9** ppVolumeTexture, HANDLE* pSharedHandle, HRESULT& res) {}
+  virtual void PostCreateCubeTexture(UINT EdgeLength, UINT Levels, DWORD Usage, D3DFORMAT Format, D3DPOOL Pool, IDirect3DCubeTexture9** ppCubeTexture, HANDLE* pSharedHandle, HRESULT& res) {}
+  virtual void PostCreateVertexBuffer(UINT Length, DWORD Usage, DWORD FVF, D3DPOOL Pool, IDirect3DVertexBuffer9** ppVertexBuffer, HANDLE* pSharedHandle, HRESULT& res) {}
+  virtual void PostCreateIndexBuffer(UINT Length, DWORD Usage, D3DFORMAT Format, D3DPOOL Pool, IDirect3DIndexBuffer9** ppIndexBuffer, HANDLE* pSharedHandle, HRESULT& res) {}
+  virtual void PostCreateRenderTarget(UINT Width, UINT Height, D3DFORMAT Format, D3DMULTISAMPLE_TYPE MultiSample, DWORD MultisampleQuality, BOOL Lockable, IDirect3DSurface9** ppSurface, HANDLE* pSharedHandle, HRESULT& res) {}
+  virtual void PostCreateDepthStencilSurface(UINT Width, UINT Height, D3DFORMAT Format, D3DMULTISAMPLE_TYPE MultiSample, DWORD MultisampleQuality, BOOL Discard, IDirect3DSurface9** ppSurface, HANDLE* pSharedHandle, HRESULT& res) {}
+  virtual void PostUpdateSurface(IDirect3DSurface9* pSourceSurface, CONST RECT* pSourceRect, IDirect3DSurface9* pDestinationSurface, CONST POINT* pDestPoint, HRESULT& res) {}
+  virtual void PostUpdateTexture(IDirect3DBaseTexture9* pSourceTexture, IDirect3DBaseTexture9* pDestinationTexture, HRESULT& res) {}
+  virtual void PostGetRenderTargetData(IDirect3DSurface9* pRenderTarget, IDirect3DSurface9* pDestSurface, HRESULT& res) {}
+  virtual void PostGetFrontBufferData(UINT iSwapChain, IDirect3DSurface9* pDestSurface, HRESULT& res) {}
+  virtual void PostStretchRect(IDirect3DSurface9* pSourceSurface, CONST RECT* pSourceRect, IDirect3DSurface9* pDestSurface, CONST RECT* pDestRect, D3DTEXTUREFILTERTYPE Filter, HRESULT& res) {}
+  virtual void PostColorFill(IDirect3DSurface9* pSurface, CONST RECT* pRect, D3DCOLOR color, HRESULT& res) {}
+  virtual void PostCreateOffscreenPlainSurface(UINT Width, UINT Height, D3DFORMAT Format, D3DPOOL Pool, IDirect3DSurface9** ppSurface, HANDLE* pSharedHandle, HRESULT& res) {}
+  virtual void PostSetRenderTarget(DWORD RenderTargetIndex, IDirect3DSurface9* pRenderTarget, HRESULT& res) {}
+  virtual void PostGetRenderTarget(DWORD RenderTargetIndex, IDirect3DSurface9** ppRenderTarget, HRESULT& res) {}
+  virtual void PostSetDepthStencilSurface(IDirect3DSurface9* pNewZStencil, HRESULT& res) {}
+  virtual void PostGetDepthStencilSurface(IDirect3DSurface9** ppZStencilSurface, HRESULT& res) {}
+  virtual void PostBeginScene(HRESULT& res) {}
+  virtual void PostEndScene(HRESULT& res) {}
+  virtual void PostClear(DWORD Count, CONST D3DRECT* pRects, DWORD Flags, D3DCOLOR Color, float Z, DWORD Stencil, HRESULT& res) {}
+  virtual void PostSetTransform(D3DTRANSFORMSTATETYPE State, CONST D3DMATRIX* pMatrix, HRESULT& res) {}
+  virtual void PostGetTransform(D3DTRANSFORMSTATETYPE State, D3DMATRIX* pMatrix, HRESULT& res) {}
+  virtual void PostMultiplyTransform(D3DTRANSFORMSTATETYPE State, CONST D3DMATRIX* pMatrix, HRESULT& res) {}
+  virtual void PostSetViewport(CONST D3DVIEWPORT9* pViewport, HRESULT& res) {}
+  virtual void PostGetViewport(D3DVIEWPORT9* pViewport, HRESULT& res) {}
+  virtual void PostSetMaterial(CONST D3DMATERIAL9* pMaterial, HRESULT& res) {}
+  virtual void PostGetMaterial(D3DMATERIAL9* pMaterial, HRESULT& res) {}
+  virtual void PostSetLight(DWORD Index, CONST D3DLIGHT9* pLight, HRESULT& res) {}
+  virtual void PostGetLight(DWORD Index, D3DLIGHT9* pLight, HRESULT& res) {}
+  virtual void PostLightEnable(DWORD Index, BOOL Enable, HRESULT& res) {}
+  virtual void PostGetLightEnable(DWORD Index, BOOL* pEnable, HRESULT& res) {}
+  virtual void PostSetClipPlane(DWORD Index, CONST float* pPlane, HRESULT& res) {}
+  virtual void PostGetClipPlane(DWORD Index, float* pPlane, HRESULT& res) {}
+  virtual void PostSetRenderState(D3DRENDERSTATETYPE State, DWORD Value, HRESULT& res) {}
+  virtual void PostGetRenderState(D3DRENDERSTATETYPE State, DWORD* pValue, HRESULT& res) {}
+  virtual void PostCreateStateBlock(D3DSTATEBLOCKTYPE Type, IDirect3DStateBlock9** ppSB, HRESULT& res) {}
+  virtual void PostBeginStateBlock(HRESULT& res) {}
+  virtual void PostEndStateBlock(IDirect3DStateBlock9** ppSB, HRESULT& res) {}
+  virtual void PostSetClipStatus(CONST D3DCLIPSTATUS9* pClipStatus, HRESULT& res) {}
+  virtual void PostGetClipStatus(D3DCLIPSTATUS9* pClipStatus, HRESULT& res) {}
+  virtual void PostGetTexture(DWORD Stage, IDirect3DBaseTexture9** ppTexture, HRESULT& res) {}
+  virtual void PostSetTexture(DWORD Stage, IDirect3DBaseTexture9* pTexture, HRESULT& res) {}
+  virtual void PostGetTextureStageState(DWORD Stage, D3DTEXTURESTAGESTATETYPE Type, DWORD* pValue, HRESULT& res) {}
+  virtual void PostSetTextureStageState(DWORD Stage, D3DTEXTURESTAGESTATETYPE Type, DWORD Value, HRESULT& res) {}
+  virtual void PostGetSamplerState(DWORD Sampler, D3DSAMPLERSTATETYPE Type, DWORD* pValue, HRESULT& res) {}
+  virtual void PostSetSamplerState(DWORD Sampler, D3DSAMPLERSTATETYPE Type, DWORD Value, HRESULT& res) {}
+  virtual void PostValidateDevice(DWORD* pNumPasses, HRESULT& res) {}
+  virtual void PostSetPaletteEntries(UINT PaletteNumber, CONST PALETTEENTRY* pEntries, HRESULT& res) {}
+  virtual void PostGetPaletteEntries(UINT PaletteNumber, PALETTEENTRY* pEntries, HRESULT& res) {}
+  virtual void PostSetCurrentTexturePalette(UINT PaletteNumber, HRESULT& res) {}
+  virtual void PostGetCurrentTexturePalette(UINT* PaletteNumber, HRESULT& res) {}
+  virtual void PostSetScissorRect(CONST RECT* pRect, HRESULT& res) {}
+  virtual void PostGetScissorRect(RECT* pRect, HRESULT& res) {}
+  virtual void PostSetSoftwareVertexProcessing(BOOL bSoftware, HRESULT& res) {}
+  virtual void PostGetSoftwareVertexProcessing(BOOL& res) {}
+  virtual void PostSetNPatchMode(float nSegments, HRESULT& res) {}
+  virtual void PostGetNPatchMode(float& res) {}
+  virtual void PostDrawPrimitive(D3DPRIMITIVETYPE PrimitiveType, UINT StartVertex, UINT PrimitiveCount, HRESULT& res) {}
+  virtual void PostDrawIndexedPrimitive(D3DPRIMITIVETYPE, INT BaseVertexIndex, UINT MinVertexIndex, UINT NumVertices, UINT startIndex, UINT primCount, HRESULT& res) {}
+  virtual void PostDrawPrimitiveUP(D3DPRIMITIVETYPE PrimitiveType, UINT PrimitiveCount, CONST void* pVertexStreamZeroData, UINT VertexStreamZeroStride, HRESULT& res) {}
+  virtual void PostDrawIndexedPrimitiveUP(D3DPRIMITIVETYPE PrimitiveType, UINT MinVertexIndex, UINT NumVertices, UINT PrimitiveCount, CONST void* pIndexData, D3DFORMAT IndexDataFormat, CONST void* pVertexStreamZeroData, UINT VertexStreamZeroStride, HRESULT& res) {}
+  virtual void PostProcessVertices(UINT SrcStartIndex, UINT DestIndex, UINT VertexCount, IDirect3DVertexBuffer9* pDestBuffer, IDirect3DVertexDeclaration9* pVertexDecl, DWORD Flags, HRESULT& res) {}
+  virtual void PostCreateVertexDeclaration(CONST D3DVERTEXELEMENT9* pVertexElements, IDirect3DVertexDeclaration9** ppDecl, HRESULT& res) {}
+  virtual void PostSetVertexDeclaration(IDirect3DVertexDeclaration9* pDecl, HRESULT& res) {}
+  virtual void PostGetVertexDeclaration(IDirect3DVertexDeclaration9** ppDecl, HRESULT& res) {}
+  virtual void PostSetFVF(DWORD FVF, HRESULT& res) {}
+  virtual void PostGetFVF(DWORD* pFVF, HRESULT& res) {}
+  virtual void PostCreateVertexShader(CONST DWORD* pFunction, IDirect3DVertexShader9** ppShader, HRESULT& res) {}
+  virtual void PostSetVertexShader(IDirect3DVertexShader9* pShader, HRESULT& res) {}
+  virtual void PostGetVertexShader(IDirect3DVertexShader9** ppShader, HRESULT& res) {}
+  virtual void PostSetVertexShaderConstantF(UINT StartRegister, CONST float* pConstantData, UINT Vector4fCount, HRESULT& res) {}
+  virtual void PostGetVertexShaderConstantF(UINT StartRegister, float* pConstantData, UINT Vector4fCount, HRESULT& res) {}
+  virtual void PostSetVertexShaderConstantI(UINT StartRegister, CONST int* pConstantData, UINT Vector4iCount, HRESULT& res) {}
+  virtual void PostGetVertexShaderConstantI(UINT StartRegister, int* pConstantData, UINT Vector4iCount, HRESULT& res) {}
+  virtual void PostSetVertexShaderConstantB(UINT StartRegister, CONST BOOL* pConstantData, UINT BoolCount, HRESULT& res) {}
+  virtual void PostGetVertexShaderConstantB(UINT StartRegister, BOOL* pConstantData, UINT BoolCount, HRESULT& res) {}
+  virtual void PostSetStreamSource(UINT StreamNumber, IDirect3DVertexBuffer9* pStreamData, UINT OffsetInBytes, UINT Stride, HRESULT& res) {}
+  virtual void PostGetStreamSource(UINT StreamNumber, IDirect3DVertexBuffer9** ppStreamData, UINT* pOffsetInBytes, UINT* pStride, HRESULT& res) {}
+  virtual void PostSetStreamSourceFreq(UINT StreamNumber, UINT Setting, HRESULT& res) {}
+  virtual void PostGetStreamSourceFreq(UINT StreamNumber, UINT* pSetting, HRESULT& res) {}
+  virtual void PostSetIndices(IDirect3DIndexBuffer9* pIndexData, HRESULT& res) {}
+  virtual void PostGetIndices(IDirect3DIndexBuffer9** ppIndexData, HRESULT& res) {}
+  virtual void PostCreatePixelShader(CONST DWORD* pFunction, IDirect3DPixelShader9** ppShader, HRESULT& res) {}
+  virtual void PostSetPixelShader(IDirect3DPixelShader9* pShader, HRESULT& res) {}
+  virtual void PostGetPixelShader(IDirect3DPixelShader9** ppShader, HRESULT& res) {}
+  virtual void PostSetPixelShaderConstantF(UINT StartRegister, CONST float* pConstantData, UINT Vector4fCount, HRESULT& res) {}
+  virtual void PostGetPixelShaderConstantF(UINT StartRegister, float* pConstantData, UINT Vector4fCount, HRESULT& res) {}
+  virtual void PostSetPixelShaderConstantI(UINT StartRegister, CONST int* pConstantData, UINT Vector4iCount, HRESULT& res) {}
+  virtual void PostGetPixelShaderConstantI(UINT StartRegister, int* pConstantData, UINT Vector4iCount, HRESULT& res) {}
+  virtual void PostSetPixelShaderConstantB(UINT StartRegister, CONST BOOL* pConstantData, UINT BoolCount, HRESULT& res) {}
+  virtual void PostGetPixelShaderConstantB(UINT StartRegister, BOOL* pConstantData, UINT BoolCount, HRESULT& res) {}
+  virtual void PostDrawRectPatch(UINT Handle, CONST float* pNumSegs, CONST D3DRECTPATCH_INFO* pRectPatchInfo, HRESULT& res) {}
+  virtual void PostDrawTriPatch(UINT Handle, CONST float* pNumSegs, CONST D3DTRIPATCH_INFO* pTriPatchInfo, HRESULT& res) {}
+  virtual void PostDeletePatch(UINT Handle, HRESULT& res) {}
+  virtual void PostCreateQuery(D3DQUERYTYPE Type, IDirect3DQuery9** ppQuery, HRESULT& res) {}
+};
+
 extern "C"
 {
   MMD_PLUGIN_API int version();
+
   MMD_PLUGIN_API MMDPluginDLL1* create1(IDirect3DDevice9* device);
   MMD_PLUGIN_API void destroy1(MMDPluginDLL1* p);
+
+  MMD_PLUGIN_API MMDPluginDLL2* create2(IDirect3DDevice9* device);
+  MMD_PLUGIN_API void destroy2(MMDPluginDLL2* p);
 }
