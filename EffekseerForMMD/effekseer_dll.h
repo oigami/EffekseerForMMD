@@ -35,28 +35,28 @@ namespace efk
   {
     D3D9DeviceEffekserr(IDirect3DDevice9* device);
 
-    virtual void DrawIndexedPrimitive(D3DPRIMITIVETYPE, INT BaseVertexIndex, UINT MinVertexIndex, UINT NumVertices, UINT startIndex, UINT primCount) override;
-    virtual void BeginScene(THIS) override;
-    virtual void EndScene(THIS) override;
-
     void UpdateCamera() const;
     void UpdateProjection() const;
 
     void HookAPI();
 
+    void DrawIndexedPrimitive(D3DPRIMITIVETYPE, INT BaseVertexIndex, UINT MinVertexIndex, UINT NumVertices, UINT startIndex, UINT primCount) override;
+    void BeginScene(THIS) override;
+    void EndScene(THIS) override;
+
     void Reset(D3DPRESENT_PARAMETERS* pPresentationParameters) override;
     void PostReset(D3DPRESENT_PARAMETERS* pPresentationParameters, HRESULT& res) override;
-    EffekseerRendererDX9::Renderer* g_renderer;
-    Effekseer::Manager* g_manager;
-    //Effekseer::Handle g_handle;
 
-    bool now_present;
-    std::unordered_map<std::wstring, int> effectID;
-    // <ID, Effect>
-    std::unordered_map<int, MyEffect> effect;
   private:
-    IDirect3DDevice9* device;
-    bool is_device_reset_;
+
+    EffekseerRendererDX9::Renderer* renderer_;
+    Effekseer::Manager* manager_;
+
+    bool now_present_;
+    std::unordered_map<std::wstring, int> effect_id_;
+    // <ID, Effect>
+    std::unordered_map<int, MyEffect> effect_;
+    IDirect3DDevice9* device_;
   };
 }
 

@@ -1,7 +1,6 @@
 ﻿#define WIN32_LEAN_AND_MEAN
 #define NOMINMAX
 #include <Windows.h>
-#include <conio.h>
 #include <shellapi.h>
 
 #include <unordered_map>
@@ -63,215 +62,14 @@ namespace efk
     }
   }
 
-
-  D3D9DeviceEffekserr::D3D9DeviceEffekserr(IDirect3DDevice9* device) : now_present(false), device(device), is_device_reset_(false)
-  {
-    HookAPI();
-    g_renderer = ::EffekseerRendererDX9::Renderer::Create(device, 10000);
-
-    // エフェクト管理用インスタンスの生成
-    g_manager = ::Effekseer::Manager::Create(10000);
-
-    // 描画用インスタンスから描画機能を設定
-    g_manager->SetSpriteRenderer(g_renderer->CreateSpriteRenderer());
-    g_manager->SetRibbonRenderer(g_renderer->CreateRibbonRenderer());
-    g_manager->SetRingRenderer(g_renderer->CreateRingRenderer());
-    g_manager->SetTrackRenderer(g_renderer->CreateTrackRenderer());
-    g_manager->SetModelRenderer(g_renderer->CreateModelRenderer());
-
-    // 描画用インスタンスからテクスチャの読込機能を設定
-    // 独自拡張可能、現在はファイルから読み込んでいる。
-    g_manager->SetTextureLoader(g_renderer->CreateTextureLoader());
-    g_manager->SetModelLoader(g_renderer->CreateModelLoader());
-
-    // 音再生用インスタンスの生成
-    //g_sound = ::EffekseerSound::Sound::Create(g_xa2, 16, 16);
-
-    // 音再生用インスタンスから再生機能を指定
-    //g_manager->SetSoundPlayer(g_sound->CreateSoundPlayer());
-
-    // 音再生用インスタンスからサウンドデータの読込機能を設定
-    // 独自拡張可能、現在はファイルから読み込んでいる。
-    //g_manager->SetSoundLoader(g_sound->CreateSoundLoader());
-
-    // 投影行列を設定
-    g_renderer->SetProjectionMatrix(
-      ::Effekseer::Matrix44().PerspectiveFovRH(90.0f / 180.0f * 3.14f, 1024.0f / 768.0f, 1.0f, 500000.0f));
-  }
-
-  void fps()
-  {
-    int i;
-    static int t = 0, ave = 0, f[60];
-    static int count = 0;
-    count++;
-    f[count % 60] = GetTickCount() - t;
-    t = GetTickCount();
-    if ( count % 60 == 59 )
-    {
-      ave = 0;
-      for ( i = 0; i < 60; i++ ) ave += f[i];
-      ave /= 60;
-    }
-    if ( ave != 0 )
-    {
-      printf("%.1fFPS \t", 1000.0 / (double) ave);
-      printf("%dms", ave);
-    }
-    return;
-  }
-
-  void D3D9DeviceEffekserr::DrawIndexedPrimitive(D3DPRIMITIVETYPE Type, INT BaseVertexIndex, UINT MinVertexIndex, UINT NumVertices, UINT startIndex, UINT primCount)
-  {
-    const int pmd_num = ExpGetPmdNum();
-    const int technic_type = ExpGetCurrentTechnic();
-    const int now_render_object = ExpGetCurrentObject();
-    const int now_render_material = ExpGetCurrentMaterial();
-    UpdateProjection();
-    if ( D3DPT_LINELIST != Type && now_render_material == 0 && now_render_object != 0
-      && !now_present && (technic_type == 1 || technic_type == 2) )
-      for ( int i = 0; i < pmd_num; i++ )
-      {
-        if ( now_render_object != ExpGetPmdOrder(i) ) continue;
-
-        UpdateCamera();
-        const int ID = ExpGetPmdID(i);
-        auto it = effect.find(ID);
-        if ( it != effect.end() )
-        {
-          auto center = ExpGetPmdBoneWorldMat(i, 0);
-          auto play_mat = ExpGetPmdBoneWorldMat(i, 1);
-          double play_time = 0.0;
-          play_time += pow(static_cast<double>(center.m[3][0]) - play_mat.m[3][0], 2);
-          play_time += pow(static_cast<double>(center.m[3][1]) - play_mat.m[3][1], 2);
-          play_time += pow(static_cast<double>(center.m[3][2]) - play_mat.m[3][2], 2);
-          play_time = sqrt(play_time) - 0.5;
-
-          it->second.setMatrix(center);
-          it->second.update(static_cast<float>(play_time));
-
-          now_present = true;
-
-          // Effekseerライブラリがリストアしてくれないので自前でバックアップしてる
-          float constant_data[256 * 4];
-          device->GetVertexShaderConstantF(0, constant_data, sizeof(constant_data) / sizeof(float) / 4);
-
-          UINT stride;
-          IDirect3DVertexBuffer9* stream_data;
-          UINT offset;
-          device->GetStreamSource(0, &stream_data, &offset, &stride);
-
-          IDirect3DIndexBuffer9* index_data;
-          device->GetIndices(&index_data);
-
-          // エフェクトの描画開始処理を行う。
-          if ( g_renderer->BeginRendering() )
-          {
-            // エフェクトの描画を行う。
-            it->second.draw();
-
-            // エフェクトの描画終了処理を行う。
-            g_renderer->EndRendering();
-          }
-
-          device->SetStreamSource(0, stream_data, offset, stride);
-          if ( stream_data ) stream_data->Release();
-
-          device->SetIndices(index_data);
-          if ( index_data ) index_data->Release();
-
-          device->SetVertexShaderConstantF(0, constant_data, sizeof(constant_data) / sizeof(float) / 4);
-
-          now_present = false;
-        }
-      }
-  }
-
-  void D3D9DeviceEffekserr::BeginScene(void)
-  {
-    int len = len = ExpGetPmdNum();
-    if ( len != effect.size() )
-      for ( int i = 0; i < len; i++ )
-      {
-        const int id = ExpGetPmdID(i);
-        const auto file_name = ExpGetPmdFilename(i);
-        filesystem::path path(file_name);
-        if ( ".efk" == path.extension() )
-        {
-          auto it = effect.insert({ id, MyEffect() });
-          if ( !it.second ) continue;
-
-          // エフェクトの読込
-          nowEFKLoading = true;
-          auto eff = Effekseer::Effect::Create(g_manager, reinterpret_cast<const EFK_CHAR*>((path.remove_filename() / path.stem().stem()).c_str()));
-          nowEFKLoading = false;
-          it.first->second = MyEffect(g_manager, eff);
-        }
-      }
-  }
-
-  void D3D9DeviceEffekserr::EndScene(void)
-  {
-    //g_renderer->SetCameraMatrix(Effekseer::Matrix44().Indentity());
-    //UpdateCamera();
-
-    // エフェクトの移動処理を行う
-    //g_manager->AddLocation(g_handle, ::Effekseer::Vector3D(0.2f, 0.0f, 0.0f));
-
-    // エフェクトの更新処理を行う
-
-    printf("%f\n", ExpGetFrameTime());
-  }
-
-
-  void D3D9DeviceEffekserr::UpdateCamera() const
-  {
-    D3DMATRIX view, world;
-    device->GetTransform(D3DTS_WORLD, &world);
-    device->GetTransform(D3DTS_VIEW, &view);
-    Effekseer::Matrix44 o, eview, eworld;
-    for ( int i = 0; i < 4; i++ )
-    {
-      for ( int j = 0; j < 4; j++ )
-      {
-        eview.Values[i][j] = view.m[i][j];
-        eworld.Values[i][j] = world.m[i][j];
-      }
-    }
-    //eworld.Values[3][2] = eview.Values[3][2];
-    Effekseer::Matrix44::Mul(o, eworld, eview);
-
-    auto toVec = [](float (&a)[4])
-      {
-        return Effekseer::Vector3D(a[0], a[1], a[2]);
-      };
-    g_renderer->SetCameraMatrix(o);
-  }
-
-  void D3D9DeviceEffekserr::UpdateProjection() const
-  {
-    D3DMATRIX projection;
-    device->GetTransform(D3DTS_PROJECTION, &projection);
-    Effekseer::Matrix44 mat;
-    for ( int i = 0; i < 4; i++ )
-    {
-      for ( int j = 0; j < 4; j++ )
-      {
-        mat.Values[i][j] = projection.m[i][j];
-      }
-    }
-
-    g_renderer->SetProjectionMatrix(mat);
-  }
-
-  MyEffect::MyEffect() : now_frame(0), manager(nullptr), handle(-1), effect(nullptr) { }
+  MyEffect::MyEffect() : now_frame(0), manager(nullptr), handle(-1), effect(nullptr) {}
 
   MyEffect::MyEffect(Effekseer::Manager* manager, Effekseer::Effect* effect) : manager(manager), effect(effect)
   {
     create();
   }
 
-  MyEffect::~MyEffect() { }
+  MyEffect::~MyEffect() {}
 
   void MyEffect::setMatrix(const D3DMATRIX& mat)
   {
@@ -334,9 +132,191 @@ namespace efk
     printf("create %f\n", ExpGetFrameTime());
   }
 
+
+  D3D9DeviceEffekserr::D3D9DeviceEffekserr(IDirect3DDevice9* device) : now_present_(false), device_(device)
+  {
+    HookAPI();
+    renderer_ = ::EffekseerRendererDX9::Renderer::Create(device, 10000);
+
+    // エフェクト管理用インスタンスの生成
+    manager_ = ::Effekseer::Manager::Create(10000);
+
+    // 描画用インスタンスから描画機能を設定
+    manager_->SetSpriteRenderer(renderer_->CreateSpriteRenderer());
+    manager_->SetRibbonRenderer(renderer_->CreateRibbonRenderer());
+    manager_->SetRingRenderer(renderer_->CreateRingRenderer());
+    manager_->SetTrackRenderer(renderer_->CreateTrackRenderer());
+    manager_->SetModelRenderer(renderer_->CreateModelRenderer());
+
+    // 描画用インスタンスからテクスチャの読込機能を設定
+    // 独自拡張可能、現在はファイルから読み込んでいる。
+    manager_->SetTextureLoader(renderer_->CreateTextureLoader());
+    manager_->SetModelLoader(renderer_->CreateModelLoader());
+
+    // 投影行列を設定
+    renderer_->SetProjectionMatrix(
+      ::Effekseer::Matrix44().PerspectiveFovRH(90.0f / 180.0f * 3.14f, 1024.0f / 768.0f, 1.0f, 500000.0f));
+  }
+
+  void fps()
+  {
+    int i;
+    static int t = 0, ave = 0, f[60];
+    static int count = 0;
+    count++;
+    f[count % 60] = GetTickCount() - t;
+    t = GetTickCount();
+    if ( count % 60 == 59 )
+    {
+      ave = 0;
+      for ( i = 0; i < 60; i++ ) ave += f[i];
+      ave /= 60;
+    }
+    if ( ave != 0 )
+    {
+      printf("%.1fFPS \t", 1000.0 / (double) ave);
+      printf("%dms", ave);
+    }
+  }
+
+  void D3D9DeviceEffekserr::DrawIndexedPrimitive(D3DPRIMITIVETYPE Type, INT BaseVertexIndex, UINT MinVertexIndex, UINT NumVertices, UINT startIndex, UINT primCount)
+  {
+    const int pmd_num = ExpGetPmdNum();
+    const int technic_type = ExpGetCurrentTechnic();
+    const int now_render_object = ExpGetCurrentObject();
+    const int now_render_material = ExpGetCurrentMaterial();
+    UpdateProjection();
+    if ( D3DPT_LINELIST != Type && now_render_material == 0 && now_render_object != 0
+      && !now_present_ && (technic_type == 1 || technic_type == 2) )
+      for ( int i = 0; i < pmd_num; i++ )
+      {
+        if ( now_render_object != ExpGetPmdOrder(i) ) continue;
+
+        UpdateCamera();
+        const int ID = ExpGetPmdID(i);
+        auto it = effect_.find(ID);
+        if ( it != effect_.end() )
+        {
+          auto center = ExpGetPmdBoneWorldMat(i, 0);
+          auto play_mat = ExpGetPmdBoneWorldMat(i, 1);
+          double play_time = 0.0;
+          play_time += pow(static_cast<double>(center.m[3][0]) - play_mat.m[3][0], 2);
+          play_time += pow(static_cast<double>(center.m[3][1]) - play_mat.m[3][1], 2);
+          play_time += pow(static_cast<double>(center.m[3][2]) - play_mat.m[3][2], 2);
+          play_time = sqrt(play_time) - 0.5;
+
+          it->second.setMatrix(center);
+          it->second.update(static_cast<float>(play_time));
+
+          now_present_ = true;
+
+          // Effekseerライブラリがリストアしてくれないので自前でバックアップしてる
+          float constant_data[256 * 4];
+          device_->GetVertexShaderConstantF(0, constant_data, sizeof(constant_data) / sizeof(float) / 4);
+
+          UINT stride;
+          IDirect3DVertexBuffer9* stream_data;
+          UINT offset;
+          device_->GetStreamSource(0, &stream_data, &offset, &stride);
+
+          IDirect3DIndexBuffer9* index_data;
+          device_->GetIndices(&index_data);
+
+          // エフェクトの描画開始処理を行う。
+          if ( renderer_->BeginRendering() )
+          {
+            // エフェクトの描画を行う。
+            it->second.draw();
+
+            // エフェクトの描画終了処理を行う。
+            renderer_->EndRendering();
+          }
+
+          device_->SetStreamSource(0, stream_data, offset, stride);
+          if ( stream_data ) stream_data->Release();
+
+          device_->SetIndices(index_data);
+          if ( index_data ) index_data->Release();
+
+          device_->SetVertexShaderConstantF(0, constant_data, sizeof(constant_data) / sizeof(float) / 4);
+
+          now_present_ = false;
+        }
+      }
+  }
+
+  void D3D9DeviceEffekserr::BeginScene(void)
+  {
+    int len = len = ExpGetPmdNum();
+    if ( len != effect_.size() )
+      for ( int i = 0; i < len; i++ )
+      {
+        const int id = ExpGetPmdID(i);
+        const auto file_name = ExpGetPmdFilename(i);
+        filesystem::path path(file_name);
+        if ( ".efk" == path.extension() )
+        {
+          auto it = effect_.insert({ id, MyEffect() });
+          if ( !it.second ) continue;
+
+          // エフェクトの読込
+          nowEFKLoading = true;
+          auto eff = Effekseer::Effect::Create(manager_, reinterpret_cast<const EFK_CHAR*>((path.remove_filename() / path.stem().stem()).c_str()));
+          nowEFKLoading = false;
+          it.first->second = MyEffect(manager_, eff);
+        }
+      }
+  }
+
+  void D3D9DeviceEffekserr::EndScene(void)
+  {
+    printf("%f\n", ExpGetFrameTime());
+  }
+
+
+  void D3D9DeviceEffekserr::UpdateCamera() const
+  {
+    D3DMATRIX view, world;
+    device_->GetTransform(D3DTS_WORLD, &world);
+    device_->GetTransform(D3DTS_VIEW, &view);
+    Effekseer::Matrix44 o, eview, eworld;
+    for ( int i = 0; i < 4; i++ )
+    {
+      for ( int j = 0; j < 4; j++ )
+      {
+        eview.Values[i][j] = view.m[i][j];
+        eworld.Values[i][j] = world.m[i][j];
+      }
+    }
+    //eworld.Values[3][2] = eview.Values[3][2];
+    Effekseer::Matrix44::Mul(o, eworld, eview);
+
+    auto toVec = [](float (&a)[4])
+      {
+        return Effekseer::Vector3D(a[0], a[1], a[2]);
+      };
+    renderer_->SetCameraMatrix(o);
+  }
+
+  void D3D9DeviceEffekserr::UpdateProjection() const
+  {
+    D3DMATRIX projection;
+    device_->GetTransform(D3DTS_PROJECTION, &projection);
+    Effekseer::Matrix44 mat;
+    for ( int i = 0; i < 4; i++ )
+    {
+      for ( int j = 0; j < 4; j++ )
+      {
+        mat.Values[i][j] = projection.m[i][j];
+      }
+    }
+
+    renderer_->SetProjectionMatrix(mat);
+  }
+
 #define HOOK_CREATE_FUNC(dllname, result, name, ...) using F##name= result (*) (__VA_ARGS__);\
                                           F##name PF##name;              \
-                                          result my##name (__VA_ARGS__); namespace hook_rewrite { void Rewrite##name(){printf("LoadLibrary %s:%d\n", dllname ,LoadLibrary(dllname ".dll")); PF##name= (F##name) RewriteFunction(dllname, #name, my##name); }}\
+                                          result my##name (__VA_ARGS__); namespace hook_rewrite { void Rewrite##name(){printf("LoadLibrary %s:%p\n", dllname ,LoadLibrary(dllname ".dll")); PF##name= (F##name) RewriteFunction(dllname, #name, my##name); }}\
                                           result my##name (__VA_ARGS__)
 #define HOOK_KERNEL32_CREATE_FUNC(result, name, ...) HOOK_CREATE_FUNC("Kernel32", result, name, __VA_ARGS__)
 
@@ -360,7 +340,7 @@ namespace efk
     HOOK_KERNEL32_CREATE_FUNC(BOOL, CloseHandle, HANDLE hObject)
     {
       now_read_pmd_file.erase(hObject);
-      printf("CloseHandle: %d\n", hObject);
+      printf("CloseHandle: %p\n", hObject);
       return PFCloseHandle(hObject);
     }
 
@@ -407,7 +387,7 @@ namespace efk
         }
       }
       auto handle = PFCreateFileW(lpFileName, dwDesiredAccess, dwShareMode, lpSecurityAttributes, dwCreationDisposition, dwFlagsAndAttributes, hTemplateFile);
-      printf("myCreateFile : %d %d\n", handle, GetLastError());
+      printf("myCreateFile : %p %d\n", handle, GetLastError());
       _putws(lpFileName);
       if ( is_default_pmd )
       {
@@ -445,7 +425,7 @@ namespace efk
       PLONG lpDistanceToMoveHigh, // ポインタを移動するべきバイト数
       DWORD dwMoveMethod) // 開始点
     {
-      printf("setpointer: %d %d  ,%d\n", lpDistanceToMoveHigh, lDistanceToMove, dwMoveMethod);
+      printf("setpointer: %p %d  ,%d\n", lpDistanceToMoveHigh, lDistanceToMove, dwMoveMethod);
       return PFSetFilePointer(hFile, lDistanceToMove, lpDistanceToMoveHigh, dwMoveMethod);
     }
 
@@ -509,17 +489,12 @@ namespace efk
 
   void D3D9DeviceEffekserr::Reset(D3DPRESENT_PARAMETERS* pPresentationParameters)
   {
-    g_renderer->OnLostDevice();
-    is_device_reset_ = true;
+    renderer_->OnLostDevice();
   }
 
   void D3D9DeviceEffekserr::PostReset(D3DPRESENT_PARAMETERS* pPresentationParameters, HRESULT& res)
   {
-    if ( is_device_reset_ )
-    {
-      g_renderer->OnResetDevice();
-      is_device_reset_ = false;
-    }
+    renderer_->OnResetDevice();
   }
 }
 
