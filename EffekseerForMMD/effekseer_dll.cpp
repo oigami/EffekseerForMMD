@@ -71,9 +71,19 @@ namespace efk
 
   MyEffect::~MyEffect() {}
 
-  void MyEffect::setMatrix(const D3DMATRIX& mat)
+  void MyEffect::setMatrix(const D3DMATRIX& center, const D3DMATRIX& base)
   {
-    base_matrix = toMatrix4x3(mat);
+    Effekseer::Matrix44 tmp;
+    Effekseer::Matrix44::Inverse(tmp, toMatrix4x4(base));
+    base_matrix = toMatrix4x3(base);
+    Effekseer::Matrix44::Mul(tmp, toMatrix4x4(center), tmp);
+    for ( int i = 0; i < 4; ++i )
+    {
+      for ( int j = 0; j < 3; ++j )
+      {
+        matrix.Value[i][j] = tmp.Values[i][j];
+      }
+    }
   }
 
   void MyEffect::update(float new_frame)
@@ -93,6 +103,7 @@ namespace efk
     {
       manager->BeginUpdate();
       manager->SetBaseMatrix(handle, base_matrix);
+      manager->SetMatrix(handle, matrix);
       manager->UpdateHandle(handle);
       manager->EndUpdate();
     }
@@ -102,6 +113,7 @@ namespace efk
     {
       manager->BeginUpdate();
       manager->SetBaseMatrix(handle, base_matrix);
+      manager->SetMatrix(handle, matrix);
       manager->UpdateHandle(handle, 0.0f);
       manager->EndUpdate();
     }
@@ -198,14 +210,15 @@ namespace efk
         if ( it != effect_.end() )
         {
           auto center = ExpGetPmdBoneWorldMat(i, 0);
-          auto play_mat = ExpGetPmdBoneWorldMat(i, 1);
+          auto base_center = ExpGetPmdBoneWorldMat(i, 1);
+          auto play_mat = ExpGetPmdBoneWorldMat(i, 2);
           double play_time = 0.0;
           play_time += pow(static_cast<double>(center.m[3][0]) - play_mat.m[3][0], 2);
           play_time += pow(static_cast<double>(center.m[3][1]) - play_mat.m[3][1], 2);
           play_time += pow(static_cast<double>(center.m[3][2]) - play_mat.m[3][2], 2);
           play_time = sqrt(play_time) - 0.5;
 
-          it->second.setMatrix(center);
+          it->second.setMatrix(center, base_center);
           it->second.update(static_cast<float>(play_time));
 
           now_present_ = true;

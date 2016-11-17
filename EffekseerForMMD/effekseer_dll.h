@@ -12,6 +12,8 @@ namespace efk
     MyEffect(Effekseer::Manager* manager, Effekseer::Effect* effect);
 
     ~MyEffect();
+    void setMatrix(const D3DMATRIX& center, const D3DMATRIX& base);
+    void setBaseMatrix(const D3DMATRIX& mat);
     void setMatrix(const D3DMATRIX& mat);
 
     void update(float delta_frame);
@@ -29,6 +31,7 @@ namespace efk
     Effekseer::Manager* manager;
     Effekseer::Handle handle;
     Effekseer::Effect* effect;
+    Effekseer::Matrix43 matrix;
   };
 
   struct D3D9DeviceEffekserr : public MMDPluginDLL2
