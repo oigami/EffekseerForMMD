@@ -293,12 +293,9 @@ namespace efk
           else
           {
             // フレーム方式
-            auto play_mat = ExpGetPmdBoneWorldMat(i, 2);
-            double play_time = 0.0;
-            play_time += pow(static_cast<double>(center.m[3][0]) - play_mat.m[3][0], 2);
-            play_time += pow(static_cast<double>(center.m[3][1]) - play_mat.m[3][1], 2);
-            play_time += pow(static_cast<double>(center.m[3][2]) - play_mat.m[3][2], 2);
-            play_time = sqrt(play_time) - 0.5;
+            auto play_mat = effect.resource.playBone(i);
+            double play_time = play_mat.m[3][1];
+            play_time = play_time - 0.5;
 
             effect.update(static_cast<float>(play_time));
           }
