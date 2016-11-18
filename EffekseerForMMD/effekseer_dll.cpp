@@ -67,8 +67,7 @@ namespace efk
     if ( i == -1 ) return;
 
     // モーフのIDを取得
-    const int morph_num = ExpGetPmdMorphNum(i);
-    for ( int j = 0; j < morph_num; ++j )
+    for ( int j = 0, len = ExpGetPmdMorphNum(i); j < len; ++j )
     {
       auto name = ExpGetPmdMorphName(i, j);
       if ( strcmp(getTriggerMorphName(), name) == 0 )
@@ -80,16 +79,43 @@ namespace efk
         auto_play_morph_id_ = j;
       }
     }
+    for ( int j = 0, len = ExpGetPmdBoneNum(i); j < len; ++j )
+    {
+      auto name = ExpGetPmdBoneName(i, j);
+      if ( strcmp(getPlayBoneName(), name) == 0 )
+      {
+        play_bone_id_ = j;
+      }
+      else if ( strcmp(getCenterBone(), name) == 0 )
+      {
+        center_bone_id_ = j;
+      }
+      else if ( strcmp(getBaseBone(), name) == 0 )
+      {
+        base_bone_id_ = j;
+      }
+    }
   }
 
   const char* PMDResource::getTriggerMorphName() { return ExpGetEnglishMode() ? "trigger" : "トリガー"; }
 
   const char* PMDResource::getAutoPlayMorphName() { return ExpGetEnglishMode() ? "auto play" : "オート再生"; }
 
+  const char* PMDResource::getPlayBoneName() { return ExpGetEnglishMode() ? "play" : "再生"; }
+
+  const char* PMDResource::getCenterBone() { return ExpGetEnglishMode() ? "center" : "センター"; }
+
+  const char* PMDResource::getBaseBone() { return ExpGetEnglishMode() ? "base" : "ベース"; }
+
   float PMDResource::triggerVal(int i) const { return ExpGetPmdMorphValue(i, trigger_morph_id_); }
 
   float PMDResource::autoPlayVal(int i) const { return ExpGetPmdMorphValue(i, auto_play_morph_id_); }
 
+  D3DMATRIX PMDResource::playBone(int i) const { return ExpGetPmdBoneWorldMat(i, play_bone_id_); }
+
+  D3DMATRIX PMDResource::centerBone(int i) const { return ExpGetPmdBoneWorldMat(i, center_bone_id_); }
+
+  D3DMATRIX PMDResource::baseBone(int i) const { return ExpGetPmdBoneWorldMat(i, base_bone_id_); }
 
   MyEffect::MyEffect() : now_frame(0), manager(nullptr), handle(-1), effect(nullptr), resource(-1) {}
 
@@ -279,8 +305,8 @@ namespace efk
           constexpr auto eps = 1e-7f;
           auto& effect = it->second;
 
-          auto center = ExpGetPmdBoneWorldMat(i, 0);
-          auto base_center = ExpGetPmdBoneWorldMat(i, 1);
+          auto center = effect.resource.centerBone(i);
+          auto base_center = effect.resource.baseBone(i);
           effect.setMatrix(center, base_center);
 
           float auto_play_val = effect.resource.autoPlayVal(i);
@@ -607,5 +633,7 @@ namespace efk
 }
 
 int version() { return 2; }
+
 MMDPluginDLL2* create2(IDirect3DDevice9* device) { return new efk::D3D9DeviceEffekserr(device); }
+
 void destroy2(MMDPluginDLL2* p) { return delete p; }

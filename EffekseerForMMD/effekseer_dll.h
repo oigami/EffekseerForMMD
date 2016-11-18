@@ -10,15 +10,28 @@ namespace efk
   {
     PMDResource(int i);
 
-    static const char* getTriggerMorphName();
-    static const char* getAutoPlayMorphName();
 
     float triggerVal(int i) const;
     float autoPlayVal(int i) const;
+    D3DMATRIX playBone(int i) const;
+    D3DMATRIX centerBone(int i) const;
+    D3DMATRIX baseBone(int i) const;
 
   private:
+
+    static const char* getTriggerMorphName();
+    static const char* getAutoPlayMorphName();
+
+    static const char* getPlayBoneName();
+    static const char* getCenterBone();
+    static const char* getBaseBone();
+
     int trigger_morph_id_ = -1;
     int auto_play_morph_id_ = -1;
+
+    int play_bone_id_ = -1;
+    int center_bone_id_ = -1;
+    int base_bone_id_ = -1;
   };
 
   struct MyEffect
