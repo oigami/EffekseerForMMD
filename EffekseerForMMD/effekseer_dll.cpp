@@ -62,9 +62,29 @@ namespace efk
     }
   }
 
-  MyEffect::MyEffect() : now_frame(0), manager(nullptr), handle(-1), effect(nullptr) {}
+  PMDResource::PMDResource(int i)
+  {
+    if ( i == -1 ) return;
 
-  MyEffect::MyEffect(Effekseer::Manager* manager, Effekseer::Effect* effect) : manager(manager), effect(effect)
+    // モーフのIDを取得
+    const int morph_num = ExpGetPmdMorphNum(i);
+    for ( int j = 0; j < morph_num; ++j )
+    {
+      auto name = ExpGetPmdMorphName(i, j);
+      if ( strcmp(getTriggerMorphName(), name) == 0 )
+      {
+        trigger_morph_id_ = j;
+      }
+    }
+  }
+
+  const char* PMDResource::getTriggerMorphName() { return ExpGetEnglishMode() ? "trigger" : "トリガー"; }
+
+  float PMDResource::triggerVal(int i) const { return ExpGetPmdMorphValue(i, trigger_morph_id_); }
+
+  MyEffect::MyEffect() : now_frame(0), manager(nullptr), handle(-1), effect(nullptr), resource(-1) {}
+
+  MyEffect::MyEffect(Effekseer::Manager* manager, Effekseer::Effect* effect, PMDResource resource) : manager(manager), effect(effect), resource(resource)
   {
     create();
   }
@@ -128,6 +148,38 @@ namespace efk
   void MyEffect::draw() const
   {
     if ( handle != -1 ) manager->DrawHandle(handle);
+
+    for ( auto& i : trigger_type_effect_ )
+    {
+      manager->DrawHandle(i);
+    }
+  }
+
+  void MyEffect::pushTriggerType()
+  {
+    auto h = manager->Play(effect, 0.0f, 0.0f, 0.0f);
+    trigger_type_effect_.push_back(h);
+    manager->Flip();
+    manager->BeginUpdate();
+    manager->SetBaseMatrix(h, base_matrix);
+    manager->SetMatrix(h, matrix);
+    manager->UpdateHandle(h);
+    manager->EndUpdate();
+  }
+
+  void MyEffect::triggerTypeUpdate()
+  {
+    auto e = std::remove_if(trigger_type_effect_.begin(), trigger_type_effect_.end(), [this](Effekseer::Handle h)
+                            {
+                              return !manager->Exists(h);
+                            });
+    trigger_type_effect_.resize(distance(trigger_type_effect_.begin(), e));
+    manager->BeginUpdate();
+    for ( auto& i : trigger_type_effect_ )
+    {
+      manager->UpdateHandle(i);
+    }
+    manager->EndUpdate();
   }
 
   void MyEffect::ifCreate()
@@ -209,8 +261,12 @@ namespace efk
         auto it = effect_.find(ID);
         if ( it != effect_.end() )
         {
+          auto& effect = it->second;
+
           auto center = ExpGetPmdBoneWorldMat(i, 0);
           auto base_center = ExpGetPmdBoneWorldMat(i, 1);
+
+          // フレーム方式
           auto play_mat = ExpGetPmdBoneWorldMat(i, 2);
           double play_time = 0.0;
           play_time += pow(static_cast<double>(center.m[3][0]) - play_mat.m[3][0], 2);
@@ -218,8 +274,25 @@ namespace efk
           play_time += pow(static_cast<double>(center.m[3][2]) - play_mat.m[3][2], 2);
           play_time = sqrt(play_time) - 0.5;
 
-          it->second.setMatrix(center, base_center);
-          it->second.update(static_cast<float>(play_time));
+          effect.setMatrix(center, base_center);
+          effect.update(static_cast<float>(play_time));
+
+          // トリガー方式
+          constexpr auto eps = 1e-7f;
+          auto is_trigger = effect.resource.triggerVal(i) >= 1.0f - eps;
+          if ( is_trigger )
+          {
+            if ( effect.pre_triggerd_ == false )
+            {
+              effect.pushTriggerType();
+              effect.pre_triggerd_ = true;
+            }
+          }
+          else
+          {
+            effect.pre_triggerd_ = false;
+          }
+          effect.triggerTypeUpdate();
 
           now_present_ = true;
 
@@ -239,7 +312,7 @@ namespace efk
           if ( renderer_->BeginRendering() )
           {
             // エフェクトの描画を行う。
-            it->second.draw();
+            effect.draw();
 
             // エフェクトの描画終了処理を行う。
             renderer_->EndRendering();
@@ -276,7 +349,7 @@ namespace efk
           nowEFKLoading = true;
           auto eff = Effekseer::Effect::Create(manager_, reinterpret_cast<const EFK_CHAR*>((path.remove_filename() / path.stem().stem()).c_str()));
           nowEFKLoading = false;
-          it.first->second = MyEffect(manager_, eff);
+          it.first->second = MyEffect(manager_, eff, PMDResource(i));
         }
       }
   }

@@ -2,14 +2,26 @@
 #include <unordered_map>
 #include "MMDPlugin/mmd_plugin.h"
 #include <EffekseerRendererDX9.h>
+#include "mmd/MMDExport.h"
 
 namespace efk
 {
+  struct PMDResource
+  {
+    PMDResource(int i);
+
+    static const char* getTriggerMorphName();
+
+    float triggerVal(int i) const;
+
+  private:
+    int trigger_morph_id_ = -1;
+  };
+
   struct MyEffect
   {
     MyEffect();
-
-    MyEffect(Effekseer::Manager* manager, Effekseer::Effect* effect);
+    MyEffect(Effekseer::Manager* manager, Effekseer::Effect* effect, PMDResource resource);
 
     ~MyEffect();
     void setMatrix(const D3DMATRIX& center, const D3DMATRIX& base);
@@ -19,6 +31,13 @@ namespace efk
     void update(float delta_frame);
 
     void draw() const;
+
+    void pushTriggerType();
+    void triggerTypeUpdate();
+
+    bool pre_triggerd_ = false;
+
+    PMDResource resource;
 
   private:
 
@@ -32,6 +51,7 @@ namespace efk
     Effekseer::Handle handle;
     Effekseer::Effect* effect;
     Effekseer::Matrix43 matrix;
+    std::vector<Effekseer::Handle> trigger_type_effect_;
   };
 
   struct D3D9DeviceEffekserr : public MMDPluginDLL2
