@@ -184,6 +184,7 @@ namespace efk
     {
       manager->UpdateHandle(i);
     }
+    manager->UpdateHandle(handle, 0.0f);
     manager->EndUpdate();
   }
 
