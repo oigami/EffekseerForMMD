@@ -75,12 +75,21 @@ namespace efk
       {
         trigger_morph_id_ = j;
       }
+      else if ( strcmp(getAutoPlayMorphName(), name) == 0 )
+      {
+        auto_play_morph_id_ = j;
+      }
     }
   }
 
   const char* PMDResource::getTriggerMorphName() { return ExpGetEnglishMode() ? "trigger" : "トリガー"; }
 
+  const char* PMDResource::getAutoPlayMorphName() { return ExpGetEnglishMode() ? "auto play" : "オート再生"; }
+
   float PMDResource::triggerVal(int i) const { return ExpGetPmdMorphValue(i, trigger_morph_id_); }
+
+  float PMDResource::autoPlayVal(int i) const { return ExpGetPmdMorphValue(i, auto_play_morph_id_); }
+
 
   MyEffect::MyEffect() : now_frame(0), manager(nullptr), handle(-1), effect(nullptr), resource(-1) {}
 
@@ -121,21 +130,12 @@ namespace efk
     const int len = std::min(static_cast<int>(1e9), static_cast<int>(new_frame - now_frame));
     for ( int i = 0; i < len; i++ )
     {
-      manager->BeginUpdate();
-      manager->SetBaseMatrix(handle, base_matrix);
-      manager->SetMatrix(handle, matrix);
-      manager->UpdateHandle(handle);
-      manager->EndUpdate();
+      UpdateHandle(1.0f);
     }
     //manager->UpdateHandle(handle, new_frame - now_frame - len);
-    now_frame += len;
     if ( len == 0 )
     {
-      manager->BeginUpdate();
-      manager->SetBaseMatrix(handle, base_matrix);
-      manager->SetMatrix(handle, matrix);
-      manager->UpdateHandle(handle, 0.0f);
-      manager->EndUpdate();
+      UpdateHandle(0.0f);
     }
 #else
     manager->BeginUpdate();
@@ -143,6 +143,11 @@ namespace efk
     manager->EndUpdate();
     now_frame = new_frame;
 #endif
+  }
+
+  void MyEffect::AutoPlayTypeUpdate()
+  {
+    UpdateHandle(1.0f);
   }
 
   void MyEffect::draw() const
@@ -196,6 +201,15 @@ namespace efk
     printf("create %f\n", ExpGetFrameTime());
   }
 
+  void MyEffect::UpdateHandle(float delta_time)
+  {
+    manager->BeginUpdate();
+    manager->SetBaseMatrix(handle, base_matrix);
+    manager->SetMatrix(handle, matrix);
+    manager->UpdateHandle(handle, delta_time);
+    now_frame += delta_time;
+    manager->EndUpdate();
+  }
 
   D3D9DeviceEffekserr::D3D9DeviceEffekserr(IDirect3DDevice9* device) : now_present_(false), device_(device)
   {
@@ -261,24 +275,34 @@ namespace efk
         auto it = effect_.find(ID);
         if ( it != effect_.end() )
         {
+          constexpr auto eps = 1e-7f;
           auto& effect = it->second;
 
           auto center = ExpGetPmdBoneWorldMat(i, 0);
           auto base_center = ExpGetPmdBoneWorldMat(i, 1);
-
-          // フレーム方式
-          auto play_mat = ExpGetPmdBoneWorldMat(i, 2);
-          double play_time = 0.0;
-          play_time += pow(static_cast<double>(center.m[3][0]) - play_mat.m[3][0], 2);
-          play_time += pow(static_cast<double>(center.m[3][1]) - play_mat.m[3][1], 2);
-          play_time += pow(static_cast<double>(center.m[3][2]) - play_mat.m[3][2], 2);
-          play_time = sqrt(play_time) - 0.5;
-
           effect.setMatrix(center, base_center);
-          effect.update(static_cast<float>(play_time));
+
+          float auto_play_val = effect.resource.autoPlayVal(i);
+
+          if ( auto_play_val >= 1.0f - eps )
+          {
+            // オート再生方式
+            effect.AutoPlayTypeUpdate();
+          }
+          else
+          {
+            // フレーム方式
+            auto play_mat = ExpGetPmdBoneWorldMat(i, 2);
+            double play_time = 0.0;
+            play_time += pow(static_cast<double>(center.m[3][0]) - play_mat.m[3][0], 2);
+            play_time += pow(static_cast<double>(center.m[3][1]) - play_mat.m[3][1], 2);
+            play_time += pow(static_cast<double>(center.m[3][2]) - play_mat.m[3][2], 2);
+            play_time = sqrt(play_time) - 0.5;
+
+            effect.update(static_cast<float>(play_time));
+          }
 
           // トリガー方式
-          constexpr auto eps = 1e-7f;
           auto is_trigger = effect.resource.triggerVal(i) >= 1.0f - eps;
           if ( is_trigger )
           {

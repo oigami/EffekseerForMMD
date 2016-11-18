@@ -11,11 +11,14 @@ namespace efk
     PMDResource(int i);
 
     static const char* getTriggerMorphName();
+    static const char* getAutoPlayMorphName();
 
     float triggerVal(int i) const;
+    float autoPlayVal(int i) const;
 
   private:
     int trigger_morph_id_ = -1;
+    int auto_play_morph_id_ = -1;
   };
 
   struct MyEffect
@@ -29,6 +32,8 @@ namespace efk
     void setMatrix(const D3DMATRIX& mat);
 
     void update(float delta_frame);
+
+    void AutoPlayTypeUpdate();
 
     void draw() const;
 
@@ -44,6 +49,8 @@ namespace efk
     void ifCreate();
 
     void create();
+
+    void UpdateHandle(float time);
 
     Effekseer::Matrix43 base_matrix;
     float now_frame;
