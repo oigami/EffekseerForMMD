@@ -78,6 +78,10 @@ namespace efk
       {
         auto_play_morph_id_ = j;
       }
+      else if ( strcmp(getFrameMorphName(), name) == 0 )
+      {
+        frame_morph_id_ = j;
+      }
     }
     for ( int j = 0, len = ExpGetPmdBoneNum(i); j < len; ++j )
     {
@@ -101,6 +105,8 @@ namespace efk
 
   const char* PMDResource::getAutoPlayMorphName() { return ExpGetEnglishMode() ? "auto play" : "オート再生"; }
 
+  const char* PMDResource::getFrameMorphName() { return ExpGetEnglishMode() ? "frame" : "フレーム"; }
+
   const char* PMDResource::getPlayBoneName() { return ExpGetEnglishMode() ? "play" : "再生"; }
 
   const char* PMDResource::getCenterBone() { return ExpGetEnglishMode() ? "center" : "センター"; }
@@ -110,6 +116,8 @@ namespace efk
   float PMDResource::triggerVal(int i) const { return trigger_morph_id_ == -1 ? 0 : ExpGetPmdMorphValue(i, trigger_morph_id_); }
 
   float PMDResource::autoPlayVal(int i) const { return auto_play_morph_id_ == -1 ? 0 : ExpGetPmdMorphValue(i, auto_play_morph_id_); }
+
+  float PMDResource::frameVal(int i) const { return frame_morph_id_ == -1 ? 0 : ExpGetPmdMorphValue(i, frame_morph_id_); }
 
   D3DMATRIX PMDResource::playBone(int i) const { return play_bone_id_ == -1 ? D3DMATRIX{ 0 } : ExpGetPmdBoneWorldMat(i, play_bone_id_); }
 
@@ -330,7 +338,7 @@ namespace efk
           {
             // フレーム方式
             auto play_mat = effect.resource.playBone(i);
-            double play_time = play_mat.m[3][1];
+            double play_time = play_mat.m[3][1] + effect.resource.frameVal(i) * 100.0f;
             play_time = play_time - 0.5;
 
             effect.update(static_cast<float>(play_time));

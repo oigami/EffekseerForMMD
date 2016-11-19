@@ -13,6 +13,8 @@ namespace efk
 
     float triggerVal(int i) const;
     float autoPlayVal(int i) const;
+    float frameVal(int i) const;
+
     D3DMATRIX playBone(int i) const;
     D3DMATRIX centerBone(int i) const;
     D3DMATRIX baseBone(int i) const;
@@ -21,6 +23,7 @@ namespace efk
 
     static const char* getTriggerMorphName();
     static const char* getAutoPlayMorphName();
+    static const char* getFrameMorphName();
 
     static const char* getPlayBoneName();
     static const char* getCenterBone();
@@ -28,6 +31,7 @@ namespace efk
 
     int trigger_morph_id_ = -1;
     int auto_play_morph_id_ = -1;
+    int frame_morph_id_ = -1;
 
     int play_bone_id_ = -1;
     int center_bone_id_ = -1;
