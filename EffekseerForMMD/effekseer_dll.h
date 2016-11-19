@@ -45,8 +45,6 @@ namespace efk
 
     ~MyEffect();
     void setMatrix(const D3DMATRIX& center, const D3DMATRIX& base);
-    void setBaseMatrix(const D3DMATRIX& mat);
-    void setMatrix(const D3DMATRIX& mat);
 
     void update(float delta_frame);
 
@@ -55,13 +53,12 @@ namespace efk
     void draw() const;
 
     void pushTriggerType();
-    void triggerTypeUpdate();
+    void triggerTypeUpdate(int i);
 
     void OnLostDevice() const;
 
     void OnResetDevice() const;
 
-    bool pre_triggerd_ = false;
 
     PMDResource resource;
 
@@ -73,6 +70,7 @@ namespace efk
 
     void UpdateHandle(float time);
 
+    bool pre_triggerd_ = false;
     Effekseer::Matrix43 base_matrix;
     float now_frame;
     Effekseer::Manager* manager;

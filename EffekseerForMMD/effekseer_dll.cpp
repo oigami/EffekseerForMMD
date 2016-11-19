@@ -206,8 +206,23 @@ namespace efk
     manager->EndUpdate();
   }
 
-  void MyEffect::triggerTypeUpdate()
+  void MyEffect::triggerTypeUpdate(int i)
   {
+    auto is_trigger = resource.triggerVal(i) >= 1.0f - eps;
+    if ( is_trigger )
+    {
+      if ( pre_triggerd_ == false )
+      {
+        pushTriggerType();
+        pre_triggerd_ = true;
+      }
+    }
+    else
+    {
+      pre_triggerd_ = false;
+    }
+
+    // 再生が終了したものを削除
     auto e = std::remove_if(trigger_type_effect_.begin(), trigger_type_effect_.end(), [this](Effekseer::Handle h)
                             {
                               return !manager->Exists(h);
@@ -345,20 +360,7 @@ namespace efk
           }
 
           // トリガー方式
-          auto is_trigger = effect.resource.triggerVal(i) >= 1.0f - eps;
-          if ( is_trigger )
-          {
-            if ( effect.pre_triggerd_ == false )
-            {
-              effect.pushTriggerType();
-              effect.pre_triggerd_ = true;
-            }
-          }
-          else
-          {
-            effect.pre_triggerd_ = false;
-          }
-          effect.triggerTypeUpdate();
+          effect.triggerTypeUpdate(i);
 
           now_present_ = true;
 
