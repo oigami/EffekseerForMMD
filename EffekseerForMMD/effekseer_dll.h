@@ -78,10 +78,16 @@ namespace efk
   {
     D3D9DeviceEffekserr(IDirect3DDevice9* device);
 
+    ~D3D9DeviceEffekserr()
+    {
+      RestoreHook();
+    }
+
     void UpdateCamera() const;
     void UpdateProjection() const;
 
     void HookAPI();
+    void RestoreHook();
 
     void DrawIndexedPrimitive(D3DPRIMITIVETYPE, INT BaseVertexIndex, UINT MinVertexIndex, UINT NumVertices, UINT startIndex, UINT primCount) override;
     void BeginScene(THIS) override;
@@ -101,11 +107,4 @@ namespace efk
     std::unordered_map<int, MyEffect> effect_;
     IDirect3DDevice9* device_;
   };
-}
-
-extern "C"
-{
-  MMD_PLUGIN_API int version();
-  MMD_PLUGIN_API MMDPluginDLL1* create1(IDirect3DDevice9* device);
-  MMD_PLUGIN_API void destroy1(MMDPluginDLL1* p);
 }

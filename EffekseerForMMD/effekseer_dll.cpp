@@ -107,15 +107,15 @@ namespace efk
 
   const char* PMDResource::getBaseBone() { return ExpGetEnglishMode() ? "base" : "ベース"; }
 
-  float PMDResource::triggerVal(int i) const { return ExpGetPmdMorphValue(i, trigger_morph_id_); }
+  float PMDResource::triggerVal(int i) const { return trigger_morph_id_ == -1 ? 0 : ExpGetPmdMorphValue(i, trigger_morph_id_); }
 
-  float PMDResource::autoPlayVal(int i) const { return ExpGetPmdMorphValue(i, auto_play_morph_id_); }
+  float PMDResource::autoPlayVal(int i) const { return auto_play_morph_id_ == -1 ? 0 : ExpGetPmdMorphValue(i, auto_play_morph_id_); }
 
-  D3DMATRIX PMDResource::playBone(int i) const { return ExpGetPmdBoneWorldMat(i, play_bone_id_); }
+  D3DMATRIX PMDResource::playBone(int i) const { return play_bone_id_ == -1 ? D3DMATRIX{ 0 } : ExpGetPmdBoneWorldMat(i, play_bone_id_); }
 
-  D3DMATRIX PMDResource::centerBone(int i) const { return ExpGetPmdBoneWorldMat(i, center_bone_id_); }
+  D3DMATRIX PMDResource::centerBone(int i) const { return center_bone_id_ == -1 ? D3DMATRIX{ 0 } : ExpGetPmdBoneWorldMat(i, center_bone_id_); }
 
-  D3DMATRIX PMDResource::baseBone(int i) const { return ExpGetPmdBoneWorldMat(i, base_bone_id_); }
+  D3DMATRIX PMDResource::baseBone(int i) const { return base_bone_id_ == -1 ? D3DMATRIX{ 0 } : ExpGetPmdBoneWorldMat(i, base_bone_id_); }
 
   MyEffect::MyEffect() : now_frame(0), manager(nullptr), handle(-1), effect(nullptr), resource(-1) {}
 
@@ -448,10 +448,13 @@ namespace efk
     renderer_->SetProjectionMatrix(mat);
   }
 
-#define HOOK_CREATE_FUNC(dllname, result, name, ...) using F##name= result (*) (__VA_ARGS__);\
+#define HOOK_CREATE_FUNC(dllname, result, name, ...) using F##name= result (WINAPI*) (__VA_ARGS__);\
                                           F##name PF##name;              \
-                                          result my##name (__VA_ARGS__); namespace hook_rewrite { void Rewrite##name(){printf("LoadLibrary %s:%p\n", dllname ,LoadLibrary(dllname ".dll")); PF##name= (F##name) RewriteFunction(dllname, #name, my##name); }}\
-                                          result my##name (__VA_ARGS__)
+                                          result WINAPI my##name (__VA_ARGS__); namespace hook_rewrite { \
+                                            void Rewrite##name(){printf("LoadLibrary %s:%p\n", dllname ,LoadLibrary(dllname ".dll")); PF##name= (F##name) RewriteFunction(dllname, #name, my##name);}\
+                                            void Restore##name(){printf("LoadLibrary %s:%p\n", dllname ,LoadLibrary(dllname ".dll")); PF##name= (F##name) RewriteFunction(dllname, #name, PF##name);}\
+                                          }\
+                                          result WINAPI my##name (__VA_ARGS__)
 #define HOOK_KERNEL32_CREATE_FUNC(result, name, ...) HOOK_CREATE_FUNC("Kernel32", result, name, __VA_ARGS__)
 
   namespace
@@ -625,6 +628,21 @@ namespace efk
     DrawMenuBar(hwnd);
   }
 
+  void D3D9DeviceEffekserr::RestoreHook()
+  {
+    hook_rewrite::RestoreCreateFileW();
+    hook_rewrite::RestoreCloseHandle();
+    hook_rewrite::RestoreReadFile();
+    hook_rewrite::RestoreSetFilePointer();
+    //hook_rewrite::RewriteDragFinish();
+    HMODULE handle = LoadLibrary("shell32.dll");
+    PFDragQueryFileW = reinterpret_cast<FDragQueryFileW>(GetProcAddress(handle, "DragQueryFileW"));
+    modifyIAT("shell32.dll", myDragQueryFileW, PFDragQueryFileW);
+
+    PFDragFinish = reinterpret_cast<FDragFinish>(GetProcAddress(handle, "DragFinish"));
+    modifyIAT("shell32.dll", myDragFinish, PFDragFinish);
+  }
+
   void D3D9DeviceEffekserr::Reset(D3DPRESENT_PARAMETERS* pPresentationParameters)
   {
     renderer_->OnLostDevice();
@@ -640,4 +658,4 @@ int version() { return 2; }
 
 MMDPluginDLL2* create2(IDirect3DDevice9* device) { return new efk::D3D9DeviceEffekserr(device); }
 
-void destroy2(MMDPluginDLL2* p) { return delete p; }
+void destroy2(MMDPluginDLL2* p) { delete p; }
