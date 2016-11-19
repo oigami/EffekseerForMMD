@@ -516,6 +516,10 @@ namespace efk
         {
           // dllの場所にあるファイルを使用
           path = filesystem::path(module_path).parent_path() / L"efk.pmd";
+          if ( filesystem::exists(path) == false )
+          {
+            MessageBoxW(nullptr, L"EffekseerForMMDの動作に必要なefk.pmdがありません。\nもう一度インストールを試してください", L"エラー", MB_OK);
+          }
           lpFileName = path.c_str();
           is_default_pmd = true;
         }
