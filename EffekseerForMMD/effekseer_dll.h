@@ -53,6 +53,10 @@ namespace efk
     void pushTriggerType();
     void triggerTypeUpdate();
 
+    void OnLostDevice() const;
+
+    void OnResetDevice() const;
+
     bool pre_triggerd_ = false;
 
     PMDResource resource;

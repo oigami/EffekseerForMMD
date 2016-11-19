@@ -214,6 +214,16 @@ namespace efk
     manager->EndUpdate();
   }
 
+  void MyEffect::OnLostDevice() const
+  {
+    if ( effect ) effect->UnloadResources();
+  }
+
+  void MyEffect::OnResetDevice() const
+  {
+    if ( effect ) effect->ReloadResources();
+  }
+
   void MyEffect::ifCreate()
   {
     if ( !manager->Exists(handle) ) create();
@@ -646,10 +656,18 @@ namespace efk
   void D3D9DeviceEffekserr::Reset(D3DPRESENT_PARAMETERS* pPresentationParameters)
   {
     renderer_->OnLostDevice();
+    for ( auto& i : effect_ )
+    {
+      i.second.OnLostDevice();
+    }
   }
 
   void D3D9DeviceEffekserr::PostReset(D3DPRESENT_PARAMETERS* pPresentationParameters, HRESULT& res)
   {
+    for ( auto& i : effect_ )
+    {
+      i.second.OnResetDevice();
+    }
     renderer_->OnResetDevice();
   }
 }
