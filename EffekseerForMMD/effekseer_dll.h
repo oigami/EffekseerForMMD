@@ -1,8 +1,9 @@
-#pragma once
+﻿#pragma once
 #include <unordered_map>
 #include "MMDPlugin/mmd_plugin.h"
 #include <EffekseerRendererDX9.h>
 #include "mmd/MMDExport.h"
+#include <array>
 
 namespace efk
 {
@@ -14,28 +15,75 @@ namespace efk
     float triggerVal(int i) const;
     float autoPlayVal(int i) const;
     float frameVal(int i) const;
+    float loopVal(int i) const;
 
     D3DMATRIX playBone(int i) const;
     D3DMATRIX centerBone(int i) const;
     D3DMATRIX baseBone(int i) const;
 
   private:
+    enum class MorphKind
+    {
+      trigger_morph,
+      auto_play_morph,
+      frame_morph,
+      loop_morph,
+      MORPH_RESOURCE_SIZE,
+    };
 
-    static const char* getTriggerMorphName();
-    static const char* getAutoPlayMorphName();
-    static const char* getFrameMorphName();
+    static constexpr int morph_resource_size = (int) MorphKind::MORPH_RESOURCE_SIZE;
+    static constexpr std::array<std::array<const char*, 2>, morph_resource_size> morph_name_ = {
+      std::array<const char*, 2>{ "trigger","トリガー" },
+      { "auto play","オート再生" },
+      { "frame","フレーム" },
+      { "loop","ループ" },
+    };
 
-    static const char* getPlayBoneName();
-    static const char* getCenterBone();
-    static const char* getBaseBone();
+    enum class BoneKind
+    {
+      play_bone,
+      center_bone,
+      base_bone,
 
-    int trigger_morph_id_ = -1;
-    int auto_play_morph_id_ = -1;
-    int frame_morph_id_ = -1;
+      BONE_RESOURCE_SIZE,
+    };
 
-    int play_bone_id_ = -1;
-    int center_bone_id_ = -1;
-    int base_bone_id_ = -1;
+    static constexpr int bone_resource_size = (int) BoneKind::BONE_RESOURCE_SIZE;
+    static constexpr std::array<std::array<const char*, 2>, bone_resource_size> bone_name_ = {
+      std::array<const char*, 2>{ "play","再生" },
+      { "center","センター" },
+      { "base","ベース" },
+    };
+
+    std::array<int, bone_resource_size> bone_id_;
+    std::array<int, morph_resource_size> morph_id_;
+
+
+    static const char* getName(MorphKind k)
+    {
+      return morph_name_[static_cast<int>(k)][!ExpGetEnglishMode()];
+    }
+
+    static const char* getName(BoneKind k)
+    {
+      return bone_name_[static_cast<int>(k)][!ExpGetEnglishMode()];
+    }
+
+    D3DMATRIX getBone(int i, BoneKind k) const
+    {
+      static D3DMATRIX indendity{
+        1.0f, 0.0f, 0.0f, 0.0f,
+        0.0f, 1.0f, 0.0f, 0.0f,
+        0.0f, 0.0f, 1.0f, 0.0f,
+        0.0f, 0.0f, 0.0f, 1.0f,
+      };
+      int id = getID(k);
+      return id == -1 ? indendity : ExpGetPmdBoneWorldMat(i, id);
+    }
+
+    int getID(MorphKind k) const { return morph_id_[static_cast<int>(k)]; }
+
+    int getID(BoneKind k) const { return bone_id_[static_cast<int>(k)]; }
   };
 
   struct MyEffect

@@ -68,60 +68,42 @@ namespace efk
     for ( int j = 0, len = ExpGetPmdMorphNum(i); j < len; ++j )
     {
       auto name = ExpGetPmdMorphName(i, j);
-      if ( strcmp(getTriggerMorphName(), name) == 0 )
+      for ( int k = 0; k < morph_resource_size; ++k )
       {
-        trigger_morph_id_ = j;
-      }
-      else if ( strcmp(getAutoPlayMorphName(), name) == 0 )
-      {
-        auto_play_morph_id_ = j;
-      }
-      else if ( strcmp(getFrameMorphName(), name) == 0 )
-      {
-        frame_morph_id_ = j;
+        if ( strcmp(getName(static_cast<MorphKind>(k)), name) == 0 )
+        {
+          morph_id_[k] = j;
+          break;
+        }
       }
     }
     for ( int j = 0, len = ExpGetPmdBoneNum(i); j < len; ++j )
     {
       auto name = ExpGetPmdBoneName(i, j);
-      if ( strcmp(getPlayBoneName(), name) == 0 )
+      for ( int k = 0; k < bone_resource_size; ++k )
       {
-        play_bone_id_ = j;
-      }
-      else if ( strcmp(getCenterBone(), name) == 0 )
-      {
-        center_bone_id_ = j;
-      }
-      else if ( strcmp(getBaseBone(), name) == 0 )
-      {
-        base_bone_id_ = j;
+        if ( strcmp(getName(static_cast<BoneKind>(k)), name) == 0 )
+        {
+          bone_id_[k] = j;
+          break;
+        }
       }
     }
   }
 
-  const char* PMDResource::getTriggerMorphName() { return ExpGetEnglishMode() ? "trigger" : "トリガー"; }
+  float PMDResource::triggerVal(int i) const { return ExpGetPmdMorphValue(i, getID(MorphKind::trigger_morph)); }
 
-  const char* PMDResource::getAutoPlayMorphName() { return ExpGetEnglishMode() ? "auto play" : "オート再生"; }
+  float PMDResource::autoPlayVal(int i) const { return ExpGetPmdMorphValue(i, getID(MorphKind::auto_play_morph)); }
 
-  const char* PMDResource::getFrameMorphName() { return ExpGetEnglishMode() ? "frame" : "フレーム"; }
+  float PMDResource::frameVal(int i) const { return ExpGetPmdMorphValue(i, getID(MorphKind::frame_morph)); }
 
-  const char* PMDResource::getPlayBoneName() { return ExpGetEnglishMode() ? "play" : "再生"; }
+  float PMDResource::loopVal(int i) const { return ExpGetPmdMorphValue(i, getID(MorphKind::loop_morph)); }
 
-  const char* PMDResource::getCenterBone() { return ExpGetEnglishMode() ? "center" : "センター"; }
+  D3DMATRIX PMDResource::playBone(int i) const { return getBone(i, BoneKind::play_bone); }
 
-  const char* PMDResource::getBaseBone() { return ExpGetEnglishMode() ? "base" : "ベース"; }
+  D3DMATRIX PMDResource::centerBone(int i) const { return getBone(i, BoneKind::center_bone); }
 
-  float PMDResource::triggerVal(int i) const { return trigger_morph_id_ == -1 ? 0 : ExpGetPmdMorphValue(i, trigger_morph_id_); }
-
-  float PMDResource::autoPlayVal(int i) const { return auto_play_morph_id_ == -1 ? 0 : ExpGetPmdMorphValue(i, auto_play_morph_id_); }
-
-  float PMDResource::frameVal(int i) const { return frame_morph_id_ == -1 ? 0 : ExpGetPmdMorphValue(i, frame_morph_id_); }
-
-  D3DMATRIX PMDResource::playBone(int i) const { return play_bone_id_ == -1 ? D3DMATRIX{ 0 } : ExpGetPmdBoneWorldMat(i, play_bone_id_); }
-
-  D3DMATRIX PMDResource::centerBone(int i) const { return center_bone_id_ == -1 ? D3DMATRIX{ 0 } : ExpGetPmdBoneWorldMat(i, center_bone_id_); }
-
-  D3DMATRIX PMDResource::baseBone(int i) const { return base_bone_id_ == -1 ? D3DMATRIX{ 0 } : ExpGetPmdBoneWorldMat(i, base_bone_id_); }
+  D3DMATRIX PMDResource::baseBone(int i) const { return getBone(i, BoneKind::base_bone); }
 
   MyEffect::MyEffect() : now_frame(0), manager(nullptr), handle(-1), effect(nullptr), resource(-1) {}
 
@@ -508,23 +490,10 @@ namespace efk
     D3DMATRIX view, world;
     device_->GetTransform(D3DTS_WORLD, &world);
     device_->GetTransform(D3DTS_VIEW, &view);
-    Effekseer::Matrix44 o, eview, eworld;
-    for ( int i = 0; i < 4; i++ )
-    {
-      for ( int j = 0; j < 4; j++ )
-      {
-        eview.Values[i][j] = view.m[i][j];
-        eworld.Values[i][j] = world.m[i][j];
-      }
-    }
-    //eworld.Values[3][2] = eview.Values[3][2];
-    Effekseer::Matrix44::Mul(o, eworld, eview);
+    Effekseer::Matrix44 camera, eview = toMatrix4x4(view), eworld = toMatrix4x4(world);
+    Effekseer::Matrix44::Mul(camera, eworld, eview);
 
-    auto toVec = [](float (&a)[4])
-      {
-        return Effekseer::Vector3D(a[0], a[1], a[2]);
-      };
-    renderer_->SetCameraMatrix(o);
+    renderer_->SetCameraMatrix(camera);
   }
 
   void D3D9DeviceEffekserr::UpdateProjection() const
