@@ -80,6 +80,26 @@ namespace efk
     std::vector<Effekseer::Handle> trigger_type_effect_;
   };
 
+  class DistortingCallback : public EffekseerRenderer::DistortingCallback
+  {
+  public:
+    DistortingCallback(::EffekseerRendererDX9::Renderer* renderer,
+                       LPDIRECT3DDEVICE9 device, int texWidth, int texHeight);
+
+    virtual ~DistortingCallback();
+
+    virtual void OnDistorting();
+    void OnLostDevice();
+    void OnResetDevice();
+  private:
+
+    bool use_distoring_ = true;
+    ::EffekseerRendererDX9::Renderer* renderer = nullptr;
+    LPDIRECT3DDEVICE9 device = nullptr;
+    int width_, height_;
+    LPDIRECT3DTEXTURE9 texture = nullptr;
+  };
+
   struct D3D9DeviceEffekserr : public MMDPluginDLL2
   {
     D3D9DeviceEffekserr(IDirect3DDevice9* device);
@@ -104,6 +124,8 @@ namespace efk
 
   private:
 
+    void SetDistorting();
+
     EffekseerRendererDX9::Renderer* renderer_;
     Effekseer::Manager* manager_;
 
@@ -112,5 +134,6 @@ namespace efk
     // <ID, Effect>
     std::unordered_map<int, MyEffect> effect_;
     IDirect3DDevice9* device_;
+    DistortingCallback* distorting_callback_ = nullptr;
   };
 }

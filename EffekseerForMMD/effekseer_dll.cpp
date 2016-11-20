@@ -2,6 +2,7 @@
 #define NOMINMAX
 #include <Windows.h>
 #include <shellapi.h>
+#include <wrl/client.h>
 
 #include <unordered_map>
 #include <experimental/filesystem>
@@ -273,6 +274,75 @@ namespace efk
     manager->EndUpdate();
   }
 
+  DistortingCallback::DistortingCallback(::EffekseerRendererDX9::Renderer* renderer, LPDIRECT3DDEVICE9 device,
+                                         int texWidth, int texHeight) : renderer(renderer), device(device), width_(texWidth), height_(texHeight)
+  {
+    OnResetDevice();
+  }
+
+  DistortingCallback::~DistortingCallback()
+  {
+    ES_SAFE_RELEASE(texture);
+  }
+
+  void DistortingCallback::OnDistorting()
+  {
+    if ( use_distoring_ == false ) return;
+
+    Microsoft::WRL::ComPtr<IDirect3DSurface9> texSurface;
+
+    HRESULT hr = texture->GetSurfaceLevel(0, texSurface.ReleaseAndGetAddressOf());
+    if ( FAILED(hr) )
+    {
+      std::wstring error = __FUNCTIONW__"でエラーが発生しました。\ntexture->GetSurfaceLevel : " + std::to_wstring(hr);
+      MessageBoxW(nullptr, error.c_str(), L"エラー", MB_OK);
+      use_distoring_ = false;
+      return;
+    }
+
+    Microsoft::WRL::ComPtr<IDirect3DSurface9> targetSurface;
+    hr = device->GetRenderTarget(0, targetSurface.ReleaseAndGetAddressOf());
+    if ( FAILED(hr) )
+    {
+      std::wstring error = __FUNCTIONW__"でエラーが発生しました。\ntexture->GetSurfaceLevel : " + std::to_wstring(hr);
+      MessageBoxW(nullptr, error.c_str(), L"エラー", MB_OK);
+      use_distoring_ = false;
+      return;
+    }
+
+    D3DVIEWPORT9 viewport;
+    device->GetViewport(&viewport);
+    RECT rect{
+      static_cast<LONG>(viewport.X),
+      static_cast<LONG>(viewport.Y),
+      static_cast<LONG>(viewport.Width + viewport.X),
+      static_cast<LONG>(viewport.Height + viewport.Y)
+    };
+    hr = device->StretchRect(targetSurface.Get(), &rect, texSurface.Get(), nullptr, D3DTEXF_NONE);
+    if ( FAILED(hr) )
+    {
+      std::wstring error = __FUNCTIONW__"でエラーが発生しました。\ntexture->GetSurfaceLevel : " + std::to_wstring(hr);
+      MessageBoxW(nullptr, error.c_str(), L"エラー", MB_OK);
+      use_distoring_ = false;
+      return;
+    }
+
+
+    renderer->SetBackground(texture);
+  }
+
+  void DistortingCallback::OnLostDevice()
+  {
+    ES_SAFE_RELEASE(texture);
+  }
+
+  void DistortingCallback::OnResetDevice()
+  {
+    OnLostDevice();
+    device->CreateTexture(width_, height_, 1, D3DUSAGE_RENDERTARGET,
+                          D3DFMT_X8R8G8B8, D3DPOOL_DEFAULT, &texture, nullptr);
+  }
+
   D3D9DeviceEffekserr::D3D9DeviceEffekserr(IDirect3DDevice9* device) : now_present_(false), device_(device)
   {
     HookAPI();
@@ -296,6 +366,8 @@ namespace efk
     // 投影行列を設定
     renderer_->SetProjectionMatrix(
       ::Effekseer::Matrix44().PerspectiveFovRH(90.0f / 180.0f * 3.14f, 1024.0f / 768.0f, 1.0f, 500000.0f));
+
+    SetDistorting();
   }
 
   void fps()
@@ -498,15 +570,39 @@ namespace efk
     {
       i.second.OnLostDevice();
     }
+    distorting_callback_->OnLostDevice();
   }
 
   void D3D9DeviceEffekserr::PostReset(D3DPRESENT_PARAMETERS* pPresentationParameters, HRESULT& res)
   {
+    distorting_callback_->OnResetDevice();
     for ( auto& i : effect_ )
     {
       i.second.OnResetDevice();
     }
     renderer_->OnResetDevice();
+  }
+
+  void D3D9DeviceEffekserr::SetDistorting()
+  {
+    // テクスチャサイズの取得
+    IDirect3DSurface9* tex;
+    if ( FAILED(device_->GetRenderTarget(0, &tex)) )
+    {
+      MessageBoxW(nullptr, L"レンダーターゲットの取得に失敗しました。\nディストーション（歪み）は使用できません。", L"エラー", MB_OK);
+      return;
+    }
+    D3DSURFACE_DESC desc;
+    if ( SUCCEEDED(tex->GetDesc(&desc)) )
+    {
+      tex->Release();
+      distorting_callback_ = new DistortingCallback(renderer_, device_, desc.Width, desc.Height);
+      renderer_->SetDistortingCallback(distorting_callback_);
+    }
+    else
+    {
+      MessageBoxW(nullptr, L"レンダーターゲットの画面サイズの取得に失敗しました。\nディストーション（歪み）は使用できません。", L"エラー", MB_OK);
+    }
   }
 }
 
