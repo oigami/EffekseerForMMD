@@ -16,6 +16,7 @@ namespace efk
     float autoPlayVal(int i) const;
     float frameVal(int i) const;
     float loopVal(int i) const;
+    float triggerEraseVal(int i) const;
 
     D3DMATRIX playBone(int i) const;
     D3DMATRIX centerBone(int i) const;
@@ -28,6 +29,8 @@ namespace efk
       auto_play_morph,
       frame_morph,
       loop_morph,
+      trigger_erase_morph,
+
       MORPH_RESOURCE_SIZE,
     };
 
@@ -37,6 +40,7 @@ namespace efk
       { "auto play","オート再生" },
       { "frame","フレーム" },
       { "loop","ループ" },
+      { "trigger erase","トリガー削除" }
     };
 
     enum class BoneKind

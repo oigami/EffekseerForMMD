@@ -101,6 +101,8 @@ namespace efk
 
   float PMDResource::loopVal(int i) const { return ExpGetPmdMorphValue(i, getID(MorphKind::loop_morph)); }
 
+  float PMDResource::triggerEraseVal(int i) const { return ExpGetPmdMorphValue(i, getID(MorphKind::trigger_erase_morph)); }
+
   D3DMATRIX PMDResource::playBone(int i) const { return getBone(i, BoneKind::play_bone); }
 
   D3DMATRIX PMDResource::centerBone(int i) const { return getBone(i, BoneKind::center_bone); }
@@ -202,6 +204,11 @@ namespace efk
     else
     {
       pre_triggerd_ = false;
+    }
+
+    if ( resource.triggerEraseVal(i) >= 1.0f - eps )
+    {
+      trigger_type_effect_.clear();
     }
 
     // 再生が終了したものを削除
