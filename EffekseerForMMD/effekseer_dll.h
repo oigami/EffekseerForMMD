@@ -96,7 +96,7 @@ namespace efk
 
     void update(float delta_frame);
 
-    void AutoPlayTypeUpdate();
+    void AutoPlayTypeUpdate(int i);
 
     void draw() const;
 

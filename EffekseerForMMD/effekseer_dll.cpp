@@ -65,6 +65,7 @@ namespace efk
     if ( i == -1 ) return;
 
     // モーフのIDを取得
+    morph_id_.fill(0);
     for ( int j = 0, len = ExpGetPmdMorphNum(i); j < len; ++j )
     {
       auto name = ExpGetPmdMorphName(i, j);
@@ -77,6 +78,7 @@ namespace efk
         }
       }
     }
+    bone_id_.fill(-1);
     for ( int j = 0, len = ExpGetPmdBoneNum(i); j < len; ++j )
     {
       auto name = ExpGetPmdBoneName(i, j);
@@ -158,8 +160,9 @@ namespace efk
 #endif
   }
 
-  void MyEffect::AutoPlayTypeUpdate()
+  void MyEffect::AutoPlayTypeUpdate(int i)
   {
+    if ( resource.loopVal(i) > 1.0f - eps ) ifCreate();
     UpdateHandle(1.0f);
   }
 
@@ -404,7 +407,7 @@ namespace efk
           if ( auto_play_val >= 1.0f - eps )
           {
             // オート再生方式
-            effect.AutoPlayTypeUpdate();
+            effect.AutoPlayTypeUpdate(i);
           }
           else
           {
