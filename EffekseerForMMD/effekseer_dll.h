@@ -17,6 +17,8 @@ namespace efk
     float frameVal(int i) const;
     float loopVal(int i) const;
     float triggerEraseVal(int i) const;
+    float scaleUpVal(int i) const;
+    float scaleDown(int i) const;
 
     D3DMATRIX playBone(int i) const;
     D3DMATRIX centerBone(int i) const;
@@ -30,6 +32,8 @@ namespace efk
       frame_morph,
       loop_morph,
       trigger_erase_morph,
+      scale_up_morph,
+      scale_down_morph,
 
       MORPH_RESOURCE_SIZE,
     };
@@ -40,7 +44,9 @@ namespace efk
       { "auto play","オート再生" },
       { "frame","フレーム" },
       { "loop","ループ" },
-      { "trigger erase","トリガー削除" }
+      { "trigger erase","トリガー削除" },
+      { "scale up","拡大" },
+      { "scale down","縮小" },
     };
 
     enum class BoneKind
@@ -97,6 +103,7 @@ namespace efk
 
     ~MyEffect();
     void setMatrix(const D3DMATRIX& center, const D3DMATRIX& base);
+    void setScale(float x, float y, float z);
 
     void update(float delta_frame);
 
@@ -120,7 +127,8 @@ namespace efk
 
     void create();
 
-    void UpdateHandle(float time);
+    void UpdateMainHandle(float time);
+    void UpdateHandle(Effekseer::Handle handle, float delta_time);
 
     bool pre_triggerd_ = false;
     Effekseer::Matrix43 base_matrix;
@@ -129,6 +137,7 @@ namespace efk
     Effekseer::Handle handle;
     Effekseer::Effect* effect;
     Effekseer::Matrix43 matrix;
+    Effekseer::Vector3D scale;
     std::vector<Effekseer::Handle> trigger_type_effect_;
   };
 

@@ -103,6 +103,10 @@ namespace efk
 
   float PMDResource::triggerEraseVal(int i) const { return ExpGetPmdMorphValue(i, getID(MorphKind::trigger_erase_morph)); }
 
+  float PMDResource::scaleUpVal(int i) const { return ExpGetPmdMorphValue(i, getID(MorphKind::scale_up_morph)); }
+
+  float PMDResource::scaleDown(int i) const { return ExpGetPmdMorphValue(i, getID(MorphKind::scale_down_morph)); }
+
   D3DMATRIX PMDResource::playBone(int i) const { return getBone(i, BoneKind::play_bone); }
 
   D3DMATRIX PMDResource::centerBone(int i) const { return getBone(i, BoneKind::center_bone); }
@@ -133,6 +137,13 @@ namespace efk
     }
   }
 
+  void MyEffect::setScale(float x, float y, float z)
+  {
+    scale.X = x;
+    scale.Y = y;
+    scale.Z = z;
+  }
+
   void MyEffect::update(float new_frame)
   {
     if ( now_frame > new_frame + eps )
@@ -147,12 +158,12 @@ namespace efk
     const int len = std::min(static_cast<int>(1e9), static_cast<int>(new_frame - now_frame));
     for ( int i = 0; i < len; i++ )
     {
-      UpdateHandle(1.0f);
+      UpdateMainHandle(1.0f);
     }
     //manager->UpdateHandle(handle, new_frame - now_frame - len);
     if ( len == 0 )
     {
-      UpdateHandle(0.0f);
+      UpdateMainHandle(0.0f);
     }
 #else
     manager->BeginUpdate();
@@ -165,7 +176,7 @@ namespace efk
   void MyEffect::AutoPlayTypeUpdate(int i)
   {
     if ( resource.loopVal(i) > 1.0f - eps ) ifCreate();
-    UpdateHandle(1.0f);
+    UpdateMainHandle(1.0f);
   }
 
   void MyEffect::draw() const
@@ -183,11 +194,7 @@ namespace efk
     auto h = manager->Play(effect, 0.0f, 0.0f, 0.0f);
     trigger_type_effect_.push_back(h);
     manager->Flip();
-    manager->BeginUpdate();
-    manager->SetBaseMatrix(h, base_matrix);
-    manager->SetMatrix(h, matrix);
-    manager->UpdateHandle(h);
-    manager->EndUpdate();
+    UpdateHandle(h, 0.0f);
   }
 
   void MyEffect::triggerTypeUpdate(int i)
@@ -217,12 +224,13 @@ namespace efk
                               return !manager->Exists(h);
                             });
     trigger_type_effect_.resize(distance(trigger_type_effect_.begin(), e));
+
     manager->BeginUpdate();
     for ( auto& j : trigger_type_effect_ )
     {
       manager->UpdateHandle(j);
     }
-    manager->UpdateHandle(handle, 0.0f);
+    UpdateMainHandle(0.0f);
     manager->EndUpdate();
   }
 
@@ -250,13 +258,19 @@ namespace efk
     printf("create %f\n", ExpGetFrameTime());
   }
 
-  void MyEffect::UpdateHandle(float delta_time)
+  void MyEffect::UpdateMainHandle(float delta_time)
+  {
+    UpdateHandle(handle, delta_time);
+    now_frame += delta_time;
+  }
+
+  void MyEffect::UpdateHandle(Effekseer::Handle h, float delta_time)
   {
     manager->BeginUpdate();
-    manager->SetBaseMatrix(handle, base_matrix);
-    manager->SetMatrix(handle, matrix);
-    manager->UpdateHandle(handle, delta_time);
-    now_frame += delta_time;
+    manager->SetMatrix(h, matrix);
+    manager->SetBaseMatrix(h, base_matrix);
+    manager->SetScale(h, scale.X, scale.Y, scale.Z);
+    manager->UpdateHandle(h, delta_time);
     manager->EndUpdate();
   }
 
@@ -405,12 +419,17 @@ namespace efk
         {
           auto& effect = it->second;
 
+          // 座標の処理
           auto center = effect.resource.centerBone(i);
           auto base_center = effect.resource.baseBone(i);
           effect.setMatrix(center, base_center);
 
-          float auto_play_val = effect.resource.autoPlayVal(i);
 
+          // 拡縮処理
+          auto scale = effect.resource.scaleUpVal(i) * 10 - effect.resource.scaleDown(i) + 1.0f;
+          effect.setScale(scale, scale, scale);
+
+          float auto_play_val = effect.resource.autoPlayVal(i);
           if ( auto_play_val >= 1.0f - eps )
           {
             // オート再生方式
