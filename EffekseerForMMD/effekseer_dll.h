@@ -104,10 +104,7 @@ namespace efk
   {
     D3D9DeviceEffekserr(IDirect3DDevice9* device);
 
-    ~D3D9DeviceEffekserr()
-    {
-      RestoreHook();
-    }
+    ~D3D9DeviceEffekserr();
 
     void UpdateCamera() const;
     void UpdateProjection() const;

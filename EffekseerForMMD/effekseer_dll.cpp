@@ -343,6 +343,7 @@ namespace efk
 
   D3D9DeviceEffekserr::D3D9DeviceEffekserr(IDirect3DDevice9* device) : now_present_(false), device_(device)
   {
+    device_->AddRef();
     HookAPI();
     renderer_ = ::EffekseerRendererDX9::Renderer::Create(device, 10000);
 
@@ -366,6 +367,14 @@ namespace efk
       ::Effekseer::Matrix44().PerspectiveFovRH(90.0f / 180.0f * 3.14f, 1024.0f / 768.0f, 1.0f, 500000.0f));
 
     SetDistorting();
+  }
+
+  D3D9DeviceEffekserr::~D3D9DeviceEffekserr()
+  {
+    manager_->Destroy();
+    renderer_->Destory();
+    RestoreHook();
+    device_->Release();
   }
 
   void fps()
@@ -576,8 +585,8 @@ namespace efk
   void D3D9DeviceEffekserr::SetDistorting()
   {
     // テクスチャサイズの取得
-    IDirect3DSurface9* tex;
-    if ( FAILED(device_->GetRenderTarget(0, &tex)) )
+    Microsoft::WRL::ComPtr<IDirect3DSurface9> tex;
+    if ( FAILED(device_->GetRenderTarget(0, tex.ReleaseAndGetAddressOf())) )
     {
       MessageBoxW(nullptr, L"レンダーターゲットの取得に失敗しました。\nディストーション（歪み）は使用できません。", L"エラー", MB_OK);
       return;
@@ -585,7 +594,6 @@ namespace efk
     D3DSURFACE_DESC desc;
     if ( SUCCEEDED(tex->GetDesc(&desc)) )
     {
-      tex->Release();
       distorting_callback_ = new DistortingCallback(renderer_, device_, desc.Width, desc.Height);
       renderer_->SetDistortingCallback(distorting_callback_);
     }
