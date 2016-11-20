@@ -154,7 +154,6 @@ namespace efk
 
   void MyEffect::update(float new_frame)
   {
-    constexpr double eps = 1e-7;
     if ( now_frame > new_frame + eps )
     {
       manager->StopEffect(handle);
@@ -232,9 +231,9 @@ namespace efk
                             });
     trigger_type_effect_.resize(distance(trigger_type_effect_.begin(), e));
     manager->BeginUpdate();
-    for ( auto& i : trigger_type_effect_ )
+    for ( auto& j : trigger_type_effect_ )
     {
-      manager->UpdateHandle(i);
+      manager->UpdateHandle(j);
     }
     manager->UpdateHandle(handle, 0.0f);
     manager->EndUpdate();
@@ -326,7 +325,6 @@ namespace efk
       use_distoring_ = false;
       return;
     }
-
 
     renderer->SetBackground(texture);
   }
@@ -476,7 +474,7 @@ namespace efk
 
   void D3D9DeviceEffekserr::BeginScene(void)
   {
-    int len = len = ExpGetPmdNum();
+    int len = ExpGetPmdNum();
     if ( len != effect_.size() )
       for ( int i = 0; i < len; i++ )
       {
@@ -514,15 +512,7 @@ namespace efk
   {
     D3DMATRIX projection;
     device_->GetTransform(D3DTS_PROJECTION, &projection);
-    Effekseer::Matrix44 mat;
-    for ( int i = 0; i < 4; i++ )
-    {
-      for ( int j = 0; j < 4; j++ )
-      {
-        mat.Values[i][j] = projection.m[i][j];
-      }
-    }
-
+    Effekseer::Matrix44 mat = toMatrix4x4(projection);
     renderer_->SetProjectionMatrix(mat);
   }
 
