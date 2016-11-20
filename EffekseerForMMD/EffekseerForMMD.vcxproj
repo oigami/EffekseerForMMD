@@ -89,6 +89,7 @@
     <ClInclude Include="effekseer_dll.h" />
     <ClInclude Include="effekseer\include\Effekseer.h" />
     <ClInclude Include="effekseer\include\EffekseerRendererDX9.h" />
+    <ClInclude Include="hook_api.h" />
     <ClInclude Include="MMDPlugin\mmd_plugin.h" />
     <ClInclude Include="mmd\MMDExport.h" />
     <ClInclude Include="stdafx.h" />
