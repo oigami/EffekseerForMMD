@@ -44,7 +44,7 @@ namespace efk
     MyEffect(Effekseer::Manager* manager, Effekseer::Effect* effect, PMDResource resource);
 
     ~MyEffect();
-    void setMatrix(const D3DMATRIX& center, const D3DMATRIX& base);
+    void setMatrix(const D3DMATRIX& center, const D3DMATRIX& base, const D3DMATRIX& view);
 
     void update(float delta_frame);
 

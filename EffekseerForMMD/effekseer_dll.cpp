@@ -131,17 +131,22 @@ namespace efk
 
   MyEffect::~MyEffect() {}
 
-  void MyEffect::setMatrix(const D3DMATRIX& center, const D3DMATRIX& base)
+  void MyEffect::setMatrix(const D3DMATRIX& center, const D3DMATRIX& base, const D3DMATRIX& world)
   {
-    Effekseer::Matrix44 tmp;
-    Effekseer::Matrix44::Inverse(tmp, toMatrix4x4(base));
-    base_matrix = toMatrix4x3(base);
-    Effekseer::Matrix44::Mul(tmp, toMatrix4x4(center), tmp);
+    Effekseer::Matrix43 view_base43;
+    Effekseer::Matrix43::Multiple(view_base43, toMatrix4x3(base), toMatrix4x3(world));
+    base_matrix = view_base43;
+
+    Effekseer::Matrix44 inv_base;
+    Effekseer::Matrix44::Inverse(inv_base, toMatrix4x4(base));
+
+    Effekseer::Matrix44 view_center;
+    Effekseer::Matrix44::Mul(view_center, toMatrix4x4(center), inv_base);
     for ( int i = 0; i < 4; ++i )
     {
       for ( int j = 0; j < 3; ++j )
       {
-        matrix.Value[i][j] = tmp.Values[i][j];
+        matrix.Value[i][j] = view_center.Values[i][j];
       }
     }
   }
@@ -336,7 +341,9 @@ namespace efk
 
           auto center = effect.resource.centerBone(i);
           auto base_center = effect.resource.baseBone(i);
-          effect.setMatrix(center, base_center);
+          D3DMATRIX world;
+          device_->GetTransform(D3DTS_WORLD, &world);
+          effect.setMatrix(center, base_center, world);
 
           float auto_play_val = effect.resource.autoPlayVal(i);
 
@@ -426,26 +433,9 @@ namespace efk
 
   void D3D9DeviceEffekserr::UpdateCamera() const
   {
-    D3DMATRIX view, world;
-    device_->GetTransform(D3DTS_WORLD, &world);
+    D3DMATRIX view;
     device_->GetTransform(D3DTS_VIEW, &view);
-    Effekseer::Matrix44 o, eview, eworld;
-    for ( int i = 0; i < 4; i++ )
-    {
-      for ( int j = 0; j < 4; j++ )
-      {
-        eview.Values[i][j] = view.m[i][j];
-        eworld.Values[i][j] = world.m[i][j];
-      }
-    }
-    //eworld.Values[3][2] = eview.Values[3][2];
-    Effekseer::Matrix44::Mul(o, eworld, eview);
-
-    auto toVec = [](float (&a)[4])
-      {
-        return Effekseer::Vector3D(a[0], a[1], a[2]);
-      };
-    renderer_->SetCameraMatrix(o);
+    renderer_->SetCameraMatrix(toMatrix4x4(view));
   }
 
   void D3D9DeviceEffekserr::UpdateProjection() const
