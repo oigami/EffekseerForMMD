@@ -149,7 +149,7 @@ namespace efk
     scale_.Z = z;
   }
 
-  void MyEffect::update(float new_frame)
+  void MyEffect::frameTypeUpdate(float new_frame)
   {
     if ( now_frame_ > new_frame + eps )
     {
@@ -178,7 +178,7 @@ namespace efk
 #endif
   }
 
-  void MyEffect::AutoPlayTypeUpdate(int i)
+  void MyEffect::autoPlayTypeUpdate(int i)
   {
     if ( resource.loopVal(i) > 1.0f - eps ) ifCreate();
     UpdateMainHandle(getSpeed(i));
@@ -440,7 +440,7 @@ namespace efk
           if ( auto_play_val >= 1.0f - eps )
           {
             // オート再生方式
-            effect.AutoPlayTypeUpdate(i);
+            effect.autoPlayTypeUpdate(i);
           }
           else
           {
@@ -449,7 +449,7 @@ namespace efk
             double play_time = play_mat.m[3][1] + effect.resource.frameVal(i) * 100.0f;
             play_time = play_time - 0.5;
 
-            effect.update(static_cast<float>(play_time));
+            effect.frameTypeUpdate(static_cast<float>(play_time));
           }
 
           // トリガー方式

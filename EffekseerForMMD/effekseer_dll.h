@@ -114,21 +114,24 @@ namespace efk
     MyEffect(Effekseer::Manager* manager, Effekseer::Effect* effect, PMDResource resource);
 
     ~MyEffect();
-    void setMatrix(const D3DMATRIX& center, const D3DMATRIX& base);
-    void setScale(float x, float y, float z);
-
-    void update(float delta_frame);
-
-    void AutoPlayTypeUpdate(int i);
 
     void draw() const;
+
+
+    void frameTypeUpdate(float delta_frame);
+
+    void autoPlayTypeUpdate(int i);
 
     void pushTriggerType();
     void triggerTypeUpdate(int i);
 
-    void OnLostDevice() const;
 
+    void OnLostDevice() const;
     void OnResetDevice() const;
+
+
+    void setMatrix(const D3DMATRIX& center, const D3DMATRIX& base);
+    void setScale(float x, float y, float z);
 
     float getSpeed(int i) const;
 
