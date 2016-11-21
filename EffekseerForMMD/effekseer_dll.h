@@ -135,9 +135,13 @@ namespace efk
 
     float getSpeed(int i) const;
 
+    void update(int i);
+
     PMDResource resource;
 
   private:
+
+    int deltaFrame() const;
 
     void ifCreate();
 
@@ -158,6 +162,7 @@ namespace efk
 
     Effekseer::Handle handle_;
     float now_frame_;
+    float pre_mmd_time_;
 
     /* トリガー */
 

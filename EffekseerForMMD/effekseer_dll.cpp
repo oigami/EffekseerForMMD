@@ -181,7 +181,18 @@ namespace efk
   void MyEffect::autoPlayTypeUpdate(int i)
   {
     if ( resource.loopVal(i) > 1.0f - eps ) ifCreate();
-    UpdateMainHandle(getSpeed(i));
+    const int delta_frame = deltaFrame();
+    if ( delta_frame < 0 )
+    {
+      if ( manager_->Exists(handle_) ) manager_->StopEffect(handle_);
+      now_frame_ = 0.0f;
+      handle_ = -1;
+    }
+    if ( handle_ == -1 ) return;
+    for ( int j = 0; j < delta_frame; ++j )
+    {
+      UpdateMainHandle(getSpeed(i));
+    }
   }
 
   void MyEffect::draw() const
@@ -218,7 +229,8 @@ namespace efk
       pre_triggerd_ = false;
     }
 
-    if ( resource.triggerEraseVal(i) >= 1.0f - eps )
+    const int delta_frame = deltaFrame();
+    if ( delta_frame < 0 || resource.triggerEraseVal(i) >= 1.0f - eps )
     {
       trigger_type_effect_.clear();
     }
@@ -233,7 +245,10 @@ namespace efk
     manager_->BeginUpdate();
     for ( auto& j : trigger_type_effect_ )
     {
-      manager_->UpdateHandle(j, getSpeed(i));
+      for ( int k = 0; k < delta_frame; ++k )
+      {
+        manager_->UpdateHandle(j, getSpeed(i));
+      }
     }
     UpdateMainHandle(0.0f);
     manager_->EndUpdate();
@@ -250,6 +265,46 @@ namespace efk
   }
 
   float MyEffect::getSpeed(int i) const { return 1.0f + resource.speedUpVal(i) - resource.speedDownVal(i); }
+
+  void MyEffect::update(int i)
+  {
+    // 座標の処理
+    auto center = resource.centerBone(i);
+    auto base_center = resource.baseBone(i);
+    setMatrix(center, base_center);
+
+
+    // 拡縮処理
+    auto scale = resource.scaleUpVal(i) * 10 - resource.scaleDown(i) + 1.0f;
+    setScale(scale, scale, scale);
+
+    float auto_play_val = resource.autoPlayVal(i);
+    if ( auto_play_val >= 1.0f - eps )
+    {
+      // オート再生方式
+      autoPlayTypeUpdate(i);
+    }
+    else
+    {
+      // フレーム方式
+      auto play_mat = resource.playBone(i);
+      double play_time = play_mat.m[3][1] + resource.frameVal(i) * 100.0f;
+      play_time = play_time - 0.5;
+
+      frameTypeUpdate(static_cast<float>(play_time));
+    }
+
+    // トリガー方式
+    triggerTypeUpdate(i);
+
+    pre_mmd_time_ = ExpGetFrameTime();
+  }
+
+  int MyEffect::deltaFrame() const
+  {
+    float time = ExpGetFrameTime();
+    return (time - pre_mmd_time_) * 60;
+  }
 
   void MyEffect::ifCreate()
   {
@@ -426,34 +481,7 @@ namespace efk
         {
           auto& effect = it->second;
 
-          // 座標の処理
-          auto center = effect.resource.centerBone(i);
-          auto base_center = effect.resource.baseBone(i);
-          effect.setMatrix(center, base_center);
-
-
-          // 拡縮処理
-          auto scale = effect.resource.scaleUpVal(i) * 10 - effect.resource.scaleDown(i) + 1.0f;
-          effect.setScale(scale, scale, scale);
-
-          float auto_play_val = effect.resource.autoPlayVal(i);
-          if ( auto_play_val >= 1.0f - eps )
-          {
-            // オート再生方式
-            effect.autoPlayTypeUpdate(i);
-          }
-          else
-          {
-            // フレーム方式
-            auto play_mat = effect.resource.playBone(i);
-            double play_time = play_mat.m[3][1] + effect.resource.frameVal(i) * 100.0f;
-            play_time = play_time - 0.5;
-
-            effect.frameTypeUpdate(static_cast<float>(play_time));
-          }
-
-          // トリガー方式
-          effect.triggerTypeUpdate(i);
+          effect.update(i);
 
           now_present_ = true;
 
