@@ -81,14 +81,14 @@ namespace efk
     {
       assert(morph_name_[static_cast<int>(k)][0]);
       assert(morph_name_[static_cast<int>(k)][1]);
-      return morph_name_[static_cast<int>(k)][!ExpGetEnglishMode()];
+      return morph_name_[static_cast<int>(k)][1];
     }
 
     static const char* getName(BoneKind k)
     {
       assert(bone_name_[static_cast<int>(k)][0]);
       assert(bone_name_[static_cast<int>(k)][1]);
-      return bone_name_[static_cast<int>(k)][!ExpGetEnglishMode()];
+      return bone_name_[static_cast<int>(k)][1];
     }
 
     D3DMATRIX getBone(int i, BoneKind k) const
