@@ -111,6 +111,8 @@ namespace efk
 
   float PMDResource::speedDownVal(int i) const { return ExpGetPmdMorphValue(i, getID(MorphKind::speed_down_morph)); }
 
+  float PMDResource::effectTestVal(int i) const { return ExpGetPmdMorphValue(i, getID(MorphKind::at_effect_test_morph)); }
+
 
   D3DMATRIX PMDResource::playBone(int i) const { return getBone(i, BoneKind::play_bone); }
 
@@ -118,9 +120,12 @@ namespace efk
 
   D3DMATRIX PMDResource::baseBone(int i) const { return getBone(i, BoneKind::base_bone); }
 
-  MyEffect::MyEffect() : now_frame_(0), manager_(nullptr), handle_(-1), effect_(nullptr), resource(-1) {}
 
-  MyEffect::MyEffect(Effekseer::Manager* manager, Effekseer::Effect* effect, PMDResource resource) : manager_(manager), effect_(effect), resource(resource)
+  MyEffect::MyEffect() : resource(-1), manager_(nullptr), effect_(nullptr), handle_(-1), now_frame_(0),
+                         pre_mmd_time_(0), effect_test_handle_(-1) {}
+
+  MyEffect::MyEffect(Effekseer::Manager* manager, Effekseer::Effect* effect, PMDResource resource)
+    : resource(resource), manager_(manager), effect_(effect), handle_(-1), pre_mmd_time_(0), effect_test_handle_(-1)
   {
     create();
   }
@@ -197,6 +202,7 @@ namespace efk
 
   void MyEffect::draw() const
   {
+    if ( effect_test_handle_ != -1 ) manager_->DrawHandle(effect_test_handle_);
     if ( handle_ != -1 ) manager_->DrawHandle(handle_);
 
     for ( auto& i : trigger_type_effect_ )
@@ -296,6 +302,17 @@ namespace efk
 
     // トリガー方式
     triggerTypeUpdate(i);
+
+    if ( resource.effectTestVal(i) > 1.0f - eps )
+    {
+      if ( manager_->Exists(effect_test_handle_) == false ) effect_test_handle_ = manager_->Play(effect_, 0.0f, 0.0f, 0.0f);
+      UpdateHandle(effect_test_handle_, 1.0f);
+    }
+    else
+    {
+      if ( manager_->Exists(effect_test_handle_) ) manager_->StopEffect(effect_test_handle_);
+      effect_test_handle_ = -1;
+    }
 
     pre_mmd_time_ = ExpGetFrameTime();
   }

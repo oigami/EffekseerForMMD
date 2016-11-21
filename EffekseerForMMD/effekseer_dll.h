@@ -22,6 +22,7 @@ namespace efk
     float scaleDown(int i) const;
     float speedUpVal(int i) const;
     float speedDownVal(int i) const;
+    float effectTestVal(int i) const;
 
 
     D3DMATRIX playBone(int i) const;
@@ -40,6 +41,7 @@ namespace efk
       scale_down_morph,
       speed_up_morph,
       speed_down_morph,
+      at_effect_test_morph,
 
       MORPH_RESOURCE_SIZE,
     };
@@ -55,6 +57,7 @@ namespace efk
       { "scale down","縮小" },
       { "speed up","速度UP" },
       { "speed down","速度DOWN" },
+      { "@effect test","@エフェクトテスト" },
     };
 
     enum class BoneKind
@@ -168,6 +171,9 @@ namespace efk
 
     bool pre_triggerd_ = false;
     std::vector<Effekseer::Handle> trigger_type_effect_;
+
+    /* 描画テスト */
+    Effekseer::Handle effect_test_handle_;
   };
 
   class DistortingCallback : public EffekseerRenderer::DistortingCallback
