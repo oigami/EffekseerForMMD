@@ -4,6 +4,7 @@
 #include <EffekseerRendererDX9.h>
 #include "mmd/MMDExport.h"
 #include <array>
+#include <cassert>
 
 namespace efk
 {
@@ -19,6 +20,9 @@ namespace efk
     float triggerEraseVal(int i) const;
     float scaleUpVal(int i) const;
     float scaleDown(int i) const;
+    float speedUpVal(int i) const;
+    float speedDownVal(int i) const;
+
 
     D3DMATRIX playBone(int i) const;
     D3DMATRIX centerBone(int i) const;
@@ -34,6 +38,8 @@ namespace efk
       trigger_erase_morph,
       scale_up_morph,
       scale_down_morph,
+      speed_up_morph,
+      speed_down_morph,
 
       MORPH_RESOURCE_SIZE,
     };
@@ -47,6 +53,8 @@ namespace efk
       { "trigger erase","トリガー削除" },
       { "scale up","拡大" },
       { "scale down","縮小" },
+      { "speed up","速度UP" },
+      { "speed down","速度DOWN" },
     };
 
     enum class BoneKind
@@ -71,11 +79,15 @@ namespace efk
 
     static const char* getName(MorphKind k)
     {
+      assert(morph_name_[static_cast<int>(k)][0]);
+      assert(morph_name_[static_cast<int>(k)][1]);
       return morph_name_[static_cast<int>(k)][!ExpGetEnglishMode()];
     }
 
     static const char* getName(BoneKind k)
     {
+      assert(bone_name_[static_cast<int>(k)][0]);
+      assert(bone_name_[static_cast<int>(k)][1]);
       return bone_name_[static_cast<int>(k)][!ExpGetEnglishMode()];
     }
 
@@ -118,6 +130,7 @@ namespace efk
 
     void OnResetDevice() const;
 
+    float getSpeed(int i) const;
 
     PMDResource resource;
 

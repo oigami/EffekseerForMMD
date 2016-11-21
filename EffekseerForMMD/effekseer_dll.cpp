@@ -107,6 +107,11 @@ namespace efk
 
   float PMDResource::scaleDown(int i) const { return ExpGetPmdMorphValue(i, getID(MorphKind::scale_down_morph)); }
 
+  float PMDResource::speedUpVal(int i) const { return ExpGetPmdMorphValue(i, getID(MorphKind::speed_up_morph)); }
+
+  float PMDResource::speedDownVal(int i) const { return ExpGetPmdMorphValue(i, getID(MorphKind::speed_down_morph)); }
+
+
   D3DMATRIX PMDResource::playBone(int i) const { return getBone(i, BoneKind::play_bone); }
 
   D3DMATRIX PMDResource::centerBone(int i) const { return getBone(i, BoneKind::center_bone); }
@@ -176,7 +181,7 @@ namespace efk
   void MyEffect::AutoPlayTypeUpdate(int i)
   {
     if ( resource.loopVal(i) > 1.0f - eps ) ifCreate();
-    UpdateMainHandle(1.0f);
+    UpdateMainHandle(getSpeed(i));
   }
 
   void MyEffect::draw() const
@@ -228,7 +233,7 @@ namespace efk
     manager->BeginUpdate();
     for ( auto& j : trigger_type_effect_ )
     {
-      manager->UpdateHandle(j);
+      manager->UpdateHandle(j, getSpeed(i));
     }
     UpdateMainHandle(0.0f);
     manager->EndUpdate();
@@ -243,6 +248,8 @@ namespace efk
   {
     if ( effect ) effect->ReloadResources();
   }
+
+  float MyEffect::getSpeed(int i) const { return 1.0f + resource.speedUpVal(i) - resource.speedDownVal(i); }
 
   void MyEffect::ifCreate()
   {
