@@ -118,9 +118,9 @@ namespace efk
 
   D3DMATRIX PMDResource::baseBone(int i) const { return getBone(i, BoneKind::base_bone); }
 
-  MyEffect::MyEffect() : now_frame(0), manager(nullptr), handle(-1), effect(nullptr), resource(-1) {}
+  MyEffect::MyEffect() : now_frame_(0), manager_(nullptr), handle_(-1), effect_(nullptr), resource(-1) {}
 
-  MyEffect::MyEffect(Effekseer::Manager* manager, Effekseer::Effect* effect, PMDResource resource) : manager(manager), effect(effect), resource(resource)
+  MyEffect::MyEffect(Effekseer::Manager* manager, Effekseer::Effect* effect, PMDResource resource) : manager_(manager), effect_(effect), resource(resource)
   {
     create();
   }
@@ -131,50 +131,50 @@ namespace efk
   {
     Effekseer::Matrix44 tmp;
     Effekseer::Matrix44::Inverse(tmp, toMatrix4x4(base));
-    base_matrix = toMatrix4x3(base);
+    base_matrix_ = toMatrix4x3(base);
     Effekseer::Matrix44::Mul(tmp, toMatrix4x4(center), tmp);
     for ( int i = 0; i < 4; ++i )
     {
       for ( int j = 0; j < 3; ++j )
       {
-        matrix.Value[i][j] = tmp.Values[i][j];
+        matrix_.Value[i][j] = tmp.Values[i][j];
       }
     }
   }
 
   void MyEffect::setScale(float x, float y, float z)
   {
-    scale.X = x;
-    scale.Y = y;
-    scale.Z = z;
+    scale_.X = x;
+    scale_.Y = y;
+    scale_.Z = z;
   }
 
   void MyEffect::update(float new_frame)
   {
-    if ( now_frame > new_frame + eps )
+    if ( now_frame_ > new_frame + eps )
     {
-      manager->StopEffect(handle);
-      handle = -1;
-      now_frame = new_frame;
+      manager_->StopEffect(handle_);
+      handle_ = -1;
+      now_frame_ = new_frame;
       return;
     }
     else ifCreate();
 #if 1
-    const int len = std::min(static_cast<int>(1e9), static_cast<int>(new_frame - now_frame));
+    const int len = std::min(static_cast<int>(1e9), static_cast<int>(new_frame - now_frame_));
     for ( int i = 0; i < len; i++ )
     {
       UpdateMainHandle(1.0f);
     }
-    //manager->UpdateHandle(handle, new_frame - now_frame - len);
+    //manager_->UpdateHandle(handle_, new_frame - now_frame_ - len);
     if ( len == 0 )
     {
       UpdateMainHandle(0.0f);
     }
 #else
-    manager->BeginUpdate();
-    manager->UpdateHandle(handle, new_frame - now_frame);
-    manager->EndUpdate();
-    now_frame = new_frame;
+    manager_->BeginUpdate();
+    manager_->UpdateHandle(handle_, new_frame - now_frame_);
+    manager_->EndUpdate();
+    now_frame_ = new_frame;
 #endif
   }
 
@@ -186,19 +186,19 @@ namespace efk
 
   void MyEffect::draw() const
   {
-    if ( handle != -1 ) manager->DrawHandle(handle);
+    if ( handle_ != -1 ) manager_->DrawHandle(handle_);
 
     for ( auto& i : trigger_type_effect_ )
     {
-      manager->DrawHandle(i);
+      manager_->DrawHandle(i);
     }
   }
 
   void MyEffect::pushTriggerType()
   {
-    auto h = manager->Play(effect, 0.0f, 0.0f, 0.0f);
+    auto h = manager_->Play(effect_, 0.0f, 0.0f, 0.0f);
     trigger_type_effect_.push_back(h);
-    manager->Flip();
+    manager_->Flip();
     UpdateHandle(h, 0.0f);
   }
 
@@ -226,59 +226,59 @@ namespace efk
     // 再生が終了したものを削除
     auto e = std::remove_if(trigger_type_effect_.begin(), trigger_type_effect_.end(), [this](Effekseer::Handle h)
                             {
-                              return !manager->Exists(h);
+                              return !manager_->Exists(h);
                             });
     trigger_type_effect_.resize(distance(trigger_type_effect_.begin(), e));
 
-    manager->BeginUpdate();
+    manager_->BeginUpdate();
     for ( auto& j : trigger_type_effect_ )
     {
-      manager->UpdateHandle(j, getSpeed(i));
+      manager_->UpdateHandle(j, getSpeed(i));
     }
     UpdateMainHandle(0.0f);
-    manager->EndUpdate();
+    manager_->EndUpdate();
   }
 
   void MyEffect::OnLostDevice() const
   {
-    if ( effect ) effect->UnloadResources();
+    if ( effect_ ) effect_->UnloadResources();
   }
 
   void MyEffect::OnResetDevice() const
   {
-    if ( effect ) effect->ReloadResources();
+    if ( effect_ ) effect_->ReloadResources();
   }
 
   float MyEffect::getSpeed(int i) const { return 1.0f + resource.speedUpVal(i) - resource.speedDownVal(i); }
 
   void MyEffect::ifCreate()
   {
-    if ( !manager->Exists(handle) ) create();
+    if ( !manager_->Exists(handle_) ) create();
   }
 
   void MyEffect::create()
   {
-    if ( manager->Exists(handle) ) manager->StopEffect(handle);
-    handle = manager->Play(effect, 0.0f, 0.0f, 0.0f);
-    manager->Flip();
-    now_frame = 0.0;
+    if ( manager_->Exists(handle_) ) manager_->StopEffect(handle_);
+    handle_ = manager_->Play(effect_, 0.0f, 0.0f, 0.0f);
+    manager_->Flip();
+    now_frame_ = 0.0;
     printf("create %f\n", ExpGetFrameTime());
   }
 
   void MyEffect::UpdateMainHandle(float delta_time)
   {
-    UpdateHandle(handle, delta_time);
-    now_frame += delta_time;
+    UpdateHandle(handle_, delta_time);
+    now_frame_ += delta_time;
   }
 
   void MyEffect::UpdateHandle(Effekseer::Handle h, float delta_time)
   {
-    manager->BeginUpdate();
-    manager->SetMatrix(h, matrix);
-    manager->SetBaseMatrix(h, base_matrix);
-    manager->SetScale(h, scale.X, scale.Y, scale.Z);
-    manager->UpdateHandle(h, delta_time);
-    manager->EndUpdate();
+    manager_->BeginUpdate();
+    manager_->SetMatrix(h, matrix_);
+    manager_->SetBaseMatrix(h, base_matrix_);
+    manager_->SetScale(h, scale_.X, scale_.Y, scale_.Z);
+    manager_->UpdateHandle(h, delta_time);
+    manager_->EndUpdate();
   }
 
   DistortingCallback::DistortingCallback(::EffekseerRendererDX9::Renderer* renderer, LPDIRECT3DDEVICE9 device,

@@ -143,14 +143,22 @@ namespace efk
     void UpdateMainHandle(float time);
     void UpdateHandle(Effekseer::Handle handle, float delta_time);
 
+    /* 共通 */
+
+    Effekseer::Manager* manager_;
+    Effekseer::Effect* effect_;
+    Effekseer::Matrix43 base_matrix_;
+    Effekseer::Matrix43 matrix_;
+    Effekseer::Vector3D scale_;
+
+    /* オート再生、フレーム */
+
+    Effekseer::Handle handle_;
+    float now_frame_;
+
+    /* トリガー */
+
     bool pre_triggerd_ = false;
-    Effekseer::Matrix43 base_matrix;
-    float now_frame;
-    Effekseer::Manager* manager;
-    Effekseer::Handle handle;
-    Effekseer::Effect* effect;
-    Effekseer::Matrix43 matrix;
-    Effekseer::Vector3D scale;
     std::vector<Effekseer::Handle> trigger_type_effect_;
   };
 
