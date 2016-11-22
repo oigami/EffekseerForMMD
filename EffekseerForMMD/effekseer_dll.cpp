@@ -236,8 +236,13 @@ namespace efk
     }
 
     const int delta_frame = deltaFrame();
+    // 前のフレームに戻っている場合または、トリガー削除が1の場合は既存の再生ハンドルをすべて削除
     if ( delta_frame < 0 || resource.triggerEraseVal(i) >= 1.0f - eps )
     {
+      for ( auto& i : trigger_type_effect_ )
+      {
+        manager_->StopEffect(i);
+      }
       trigger_type_effect_.clear();
     }
 
