@@ -560,6 +560,11 @@ namespace efk
           nowEFKLoading = true;
           auto eff = Effekseer::Effect::Create(manager_, reinterpret_cast<const EFK_CHAR*>((path.remove_filename() / path.stem().stem()).c_str()));
           nowEFKLoading = false;
+          if ( eff == nullptr )
+          {
+            std::wstring error=L".efkファイルの読み込みに失敗しました。\nfilename: " + (path.remove_filename() / path.stem().stem()).wstring();
+            MessageBoxW(nullptr, error.c_str(), L"エラー", MB_OK);
+          }
           it.first->second = MyEffect(manager_, eff, PMDResource(i));
         }
       }
