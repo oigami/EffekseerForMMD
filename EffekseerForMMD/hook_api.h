@@ -5,6 +5,7 @@
 #include <winbase.h>
 #include <wincon.h>
 
+#include <mutex>
 #include <experimental/filesystem>
 namespace filesystem = std::experimental::filesystem;
 
@@ -41,9 +42,11 @@ namespace efk
     };
 
     std::unordered_map<HANDLE, ReadFileData> now_read_pmd_file;
+    std::mutex now_read_pmd_file_mutex;
 
     HOOK_KERNEL32_CREATE_FUNC(BOOL, CloseHandle, HANDLE hObject)
     {
+      std::lock_guard<std::mutex> lock(now_read_pmd_file_mutex);
       now_read_pmd_file.erase(hObject);
       printf("CloseHandle: %p\n", hObject);
       return PFCloseHandle(hObject);
@@ -100,6 +103,7 @@ namespace efk
       _putws(lpFileName);
       if ( is_default_pmd )
       {
+        std::lock_guard<std::mutex> lock(now_read_pmd_file_mutex);
         now_read_pmd_file.insert({ handle, efk_filename });
       }
       return handle;
@@ -114,6 +118,7 @@ namespace efk
     {
       //printf("ReadFile %d : %d\n", hFile, nNumberOfBytesToRead);
       auto res = PFReadFile(hFile, lpBuffer, nNumberOfBytesToRead, lpNumberOfBytesRead, lpOverlapped);
+      std::lock_guard<std::mutex> lock(now_read_pmd_file_mutex);
       auto it = now_read_pmd_file.find(hFile);
       if ( it != now_read_pmd_file.end() )
       {
