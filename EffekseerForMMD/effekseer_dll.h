@@ -19,7 +19,7 @@ namespace efk
     float loopVal(int i) const;
     float triggerEraseVal(int i) const;
     float scaleUpVal(int i) const;
-    float scaleDown(int i) const;
+    float scaleDownVal(int i) const;
     float speedUpVal(int i) const;
     float speedDownVal(int i) const;
     float effectTestVal(int i) const;
@@ -92,6 +92,11 @@ namespace efk
       assert(bone_name_[static_cast<int>(k)][0]);
       assert(bone_name_[static_cast<int>(k)][1]);
       return bone_name_[static_cast<int>(k)][1];
+    }
+
+    float getMorph(int i, MorphKind k) const
+    {
+      return ExpGetPmdMorphValue(i, getID(k));
     }
 
     D3DMATRIX getBone(int i, BoneKind k) const

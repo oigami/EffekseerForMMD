@@ -93,25 +93,25 @@ namespace efk
     }
   }
 
-  float PMDResource::triggerVal(int i) const { return ExpGetPmdMorphValue(i, getID(MorphKind::trigger_morph)); }
+  float PMDResource::triggerVal(int i) const { return getMorph(i, MorphKind::trigger_morph); }
 
-  float PMDResource::autoPlayVal(int i) const { return ExpGetPmdMorphValue(i, getID(MorphKind::auto_play_morph)); }
+  float PMDResource::autoPlayVal(int i) const { return getMorph(i, MorphKind::auto_play_morph); }
 
-  float PMDResource::frameVal(int i) const { return ExpGetPmdMorphValue(i, getID(MorphKind::frame_morph)); }
+  float PMDResource::frameVal(int i) const { return getMorph(i, MorphKind::frame_morph); }
 
-  float PMDResource::loopVal(int i) const { return ExpGetPmdMorphValue(i, getID(MorphKind::loop_morph)); }
+  float PMDResource::loopVal(int i) const { return getMorph(i, MorphKind::loop_morph); }
 
-  float PMDResource::triggerEraseVal(int i) const { return ExpGetPmdMorphValue(i, getID(MorphKind::trigger_erase_morph)); }
+  float PMDResource::triggerEraseVal(int i) const { return getMorph(i, MorphKind::trigger_erase_morph); }
 
-  float PMDResource::scaleUpVal(int i) const { return ExpGetPmdMorphValue(i, getID(MorphKind::scale_up_morph)); }
+  float PMDResource::scaleUpVal(int i) const { return getMorph(i, MorphKind::scale_up_morph); }
 
-  float PMDResource::scaleDown(int i) const { return ExpGetPmdMorphValue(i, getID(MorphKind::scale_down_morph)); }
+  float PMDResource::scaleDownVal(int i) const { return getMorph(i, MorphKind::scale_down_morph); }
 
-  float PMDResource::speedUpVal(int i) const { return ExpGetPmdMorphValue(i, getID(MorphKind::speed_up_morph)); }
+  float PMDResource::speedUpVal(int i) const { return getMorph(i, MorphKind::speed_up_morph); }
 
-  float PMDResource::speedDownVal(int i) const { return ExpGetPmdMorphValue(i, getID(MorphKind::speed_down_morph)); }
+  float PMDResource::speedDownVal(int i) const { return getMorph(i, MorphKind::speed_down_morph); }
 
-  float PMDResource::effectTestVal(int i) const { return ExpGetPmdMorphValue(i, getID(MorphKind::at_effect_test_morph)); }
+  float PMDResource::effectTestVal(int i) const { return getMorph(i, MorphKind::at_effect_test_morph); }
 
 
   D3DMATRIX PMDResource::playBone(int i) const { return getBone(i, BoneKind::play_bone); }
@@ -286,7 +286,7 @@ namespace efk
 
 
     // 拡縮処理
-    auto scale = resource.scaleUpVal(i) * 10 - resource.scaleDown(i) + 1.0f;
+    auto scale = resource.scaleUpVal(i) * 10 - resource.scaleDownVal(i) + 1.0f;
     setScale(scale, scale, scale);
 
     float auto_play_val = resource.autoPlayVal(i);
