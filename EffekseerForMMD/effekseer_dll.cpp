@@ -192,6 +192,7 @@ namespace efk
       if ( manager_->Exists(handle_) ) manager_->StopEffect(handle_);
       now_frame_ = 0.0f;
       handle_ = -1;
+      if ( ExpGetFrameTime() <= 0.0f + eps ) ifCreate();
     }
     if ( handle_ == -1 ) return;
     for ( int j = 0; j < delta_frame; ++j )
@@ -224,7 +225,7 @@ namespace efk
     auto is_trigger = resource.triggerVal(i) >= 1.0f - eps;
     if ( is_trigger )
     {
-      if ( pre_triggerd_ == false )
+      if ( pre_triggerd_ == false || ExpGetFrameTime() <= 0.0f + eps && trigger_type_effect_.size() == 0 )
       {
         pushTriggerType();
         pre_triggerd_ = true;
