@@ -614,7 +614,7 @@ namespace efk
     // メニューバーの追加
     auto hwnd = getHWND();
     auto hmenu = GetMenu(hwnd);
-    AppendMenuA(hmenu, MF_RIGHTJUSTIFY | MFS_GRAYED | MFS_DISABLED, 10000001, "Effekseer");
+    AppendMenuA(hmenu, MF_RIGHTJUSTIFY , 10000001, "Effekseer");
     DrawMenuBar(hwnd);
   }
 
