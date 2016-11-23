@@ -255,14 +255,24 @@ namespace efk
     trigger_type_effect_.resize(distance(trigger_type_effect_.begin(), e));
 
     manager_->BeginUpdate();
-    for ( auto& j : trigger_type_effect_ )
+    UpdateMainHandle(0.0f);
+    if ( delta_frame >= 1 )
     {
-      for ( int k = 0; k < delta_frame; ++k )
+      for ( auto& j : trigger_type_effect_ )
       {
-        manager_->UpdateHandle(j, getSpeed(i));
+        for ( int k = 0; k < delta_frame; ++k )
+        {
+          manager_->UpdateHandle(j, getSpeed(i));
+        }
       }
     }
-    UpdateMainHandle(0.0f);
+    else
+    {
+      for ( auto& j : trigger_type_effect_ )
+      {
+        manager_->UpdateHandle(j, 0.0f);
+      }
+    }
     manager_->EndUpdate();
   }
 
