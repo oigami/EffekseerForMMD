@@ -319,14 +319,14 @@ namespace efk
       if ( manager_->Exists(effect_test_handle_) ) manager_->StopEffect(effect_test_handle_);
       effect_test_handle_ = -1;
     }
-
-    pre_mmd_time_ = ExpGetFrameTime();
+    const int delta_time = deltaFrame();
+    pre_mmd_time_ += delta_time / 30.0f;
   }
 
   int MyEffect::deltaFrame() const
   {
     float time = ExpGetFrameTime();
-    return (time - pre_mmd_time_) * 60;
+    return (time - pre_mmd_time_) * 30;
   }
 
   void MyEffect::ifCreate()
