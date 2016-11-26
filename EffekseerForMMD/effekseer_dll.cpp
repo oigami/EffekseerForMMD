@@ -568,12 +568,12 @@ namespace efk
           if ( !it.second ) continue;
 
           // エフェクトの読込
-          nowEFKLoading = true;
+          hook_rewrite::nowEFKLoading = true;
           auto eff = Effekseer::Effect::Create(manager_, reinterpret_cast<const EFK_CHAR*>((path.remove_filename() / path.stem().stem()).c_str()));
-          nowEFKLoading = false;
+          hook_rewrite::nowEFKLoading = false;
           if ( eff == nullptr )
           {
-            std::wstring error=L".efkファイルの読み込みに失敗しました。\nfilename: " + (path.remove_filename() / path.stem().stem()).wstring();
+            std::wstring error = L".efkファイルの読み込みに失敗しました。\nfilename: " + (path.remove_filename() / path.stem().stem()).wstring();
             MessageBoxW(nullptr, error.c_str(), L"エラー", MB_OK);
           }
           it.first->second = MyEffect(manager_, eff, PMDResource(i));
@@ -613,34 +613,24 @@ namespace efk
     hook_rewrite::RewriteCloseHandle();
     hook_rewrite::RewriteReadFile();
     hook_rewrite::RewriteSetFilePointer();
-    //hook_rewrite::RewriteDragFinish();
-    HMODULE handle = LoadLibrary("shell32.dll");
-    PFDragQueryFileW = reinterpret_cast<FDragQueryFileW>(GetProcAddress(handle, "DragQueryFileW"));
-    modifyIAT("shell32.dll", PFDragQueryFileW, myDragQueryFileW);
-
-    PFDragFinish = reinterpret_cast<FDragFinish>(GetProcAddress(handle, "DragFinish"));
-    modifyIAT("shell32.dll", PFDragFinish, myDragFinish);
+    hook_rewrite::RewriteDragFinish();
+    hook_rewrite::RewriteDragQueryFileW();
 
     // メニューバーの追加
     auto hwnd = getHWND();
     auto hmenu = GetMenu(hwnd);
-    AppendMenuA(hmenu, MF_RIGHTJUSTIFY , 10000001, "Effekseer");
+    AppendMenuA(hmenu, MF_RIGHTJUSTIFY, 10000001, "Effekseer");
     DrawMenuBar(hwnd);
   }
 
   void D3D9DeviceEffekserr::RestoreHook()
   {
-    hook_rewrite::RestoreCreateFileW();
-    hook_rewrite::RestoreCloseHandle();
-    hook_rewrite::RestoreReadFile();
-    hook_rewrite::RestoreSetFilePointer();
-    //hook_rewrite::RewriteDragFinish();
-    HMODULE handle = LoadLibrary("shell32.dll");
-    PFDragQueryFileW = reinterpret_cast<FDragQueryFileW>(GetProcAddress(handle, "DragQueryFileW"));
-    modifyIAT("shell32.dll", myDragQueryFileW, PFDragQueryFileW);
-
-    PFDragFinish = reinterpret_cast<FDragFinish>(GetProcAddress(handle, "DragFinish"));
-    modifyIAT("shell32.dll", myDragFinish, PFDragFinish);
+    hook_rewrite::PFCreateFileW.reset();
+    hook_rewrite::PFCloseHandle.reset();
+    hook_rewrite::PFReadFile.reset();
+    hook_rewrite::PFSetFilePointer.reset();
+    hook_rewrite::PFDragFinish.reset();
+    hook_rewrite::PFDragQueryFileW.reset();
   }
 
   void D3D9DeviceEffekserr::Reset(D3DPRESENT_PARAMETERS* pPresentationParameters)
