@@ -1,6 +1,6 @@
 # EffekseerForMMD
 # 導入方法
-基本的にMMEと同じ方法です。[EffekseerForMMD_v0.x_with_MME_v0.37_x64.zip](https://github.com/oigami/EffekseerForMMD/releases)をダウンロードし、MikuMikuDance.exeがあるディレクトリにd3d9.dllとpluginフォルダを置くだけで導入は終わりです。
+[MMDPlugin Installer](https://github.com/oigami/MMDUtility/wiki/how_to_install)を使用してください。
 
 # 使い方
 [wiki](https://github.com/oigami/EffekseerForMMD/wiki)に基本的な動作が書いてあります。  
