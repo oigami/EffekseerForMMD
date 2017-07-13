@@ -1,4 +1,6 @@
 # EffekseerForMMD
+[Effekseer 公式サイト](https://effekseer.github.io/jp/index.html)
+
 # 導入方法
 [MMDPlugin Installer](https://github.com/oigami/MMDUtility/wiki/how_to_install)を使用してください。
 
