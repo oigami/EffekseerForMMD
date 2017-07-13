@@ -122,7 +122,9 @@ namespace efk
 
 
   MyEffect::MyEffect() : resource(-1), manager_(nullptr), effect_(nullptr), handle_(-1), now_frame_(0),
-                         pre_mmd_time_(0), effect_test_handle_(-1) {}
+    pre_mmd_time_(0), effect_test_handle_(-1)
+  {
+  }
 
   MyEffect::MyEffect(Effekseer::Manager* manager, Effekseer::Effect* effect, PMDResource resource)
     : resource(resource), manager_(manager), effect_(effect), handle_(-1), pre_mmd_time_(0), effect_test_handle_(-1)
@@ -249,9 +251,9 @@ namespace efk
 
     // 再生が終了したものを削除
     auto e = std::remove_if(trigger_type_effect_.begin(), trigger_type_effect_.end(), [this](Effekseer::Handle h)
-                            {
-                              return !manager_->Exists(h);
-                            });
+    {
+      return !manager_->Exists(h);
+    });
     trigger_type_effect_.resize(distance(trigger_type_effect_.begin(), e));
 
     manager_->BeginUpdate();
@@ -380,9 +382,9 @@ namespace efk
     ES_SAFE_RELEASE(texture);
   }
 
-  void DistortingCallback::OnDistorting()
+  bool DistortingCallback::OnDistorting()
   {
-    if ( use_distoring_ == false ) return;
+    if ( use_distoring_ == false ) return false;
 
     Microsoft::WRL::ComPtr<IDirect3DSurface9> texSurface;
 
@@ -392,7 +394,7 @@ namespace efk
       std::wstring error = __FUNCTIONW__"でエラーが発生しました。\ntexture->GetSurfaceLevel : " + std::to_wstring(hr);
       MessageBoxW(nullptr, error.c_str(), L"エラー", MB_OK);
       use_distoring_ = false;
-      return;
+      return false;
     }
 
     Microsoft::WRL::ComPtr<IDirect3DSurface9> targetSurface;
@@ -402,7 +404,7 @@ namespace efk
       std::wstring error = __FUNCTIONW__"でエラーが発生しました。\ntexture->GetSurfaceLevel : " + std::to_wstring(hr);
       MessageBoxW(nullptr, error.c_str(), L"エラー", MB_OK);
       use_distoring_ = false;
-      return;
+      return false;
     }
 
     D3DVIEWPORT9 viewport;
@@ -419,10 +421,12 @@ namespace efk
       std::wstring error = __FUNCTIONW__"でエラーが発生しました。\ntexture->GetSurfaceLevel : " + std::to_wstring(hr);
       MessageBoxW(nullptr, error.c_str(), L"エラー", MB_OK);
       use_distoring_ = false;
-      return;
+      return false;
     }
 
     renderer->SetBackground(texture);
+
+    return true;
   }
 
   void DistortingCallback::OnLostDevice()
@@ -468,7 +472,7 @@ namespace efk
   D3D9DeviceEffekserr::~D3D9DeviceEffekserr()
   {
     manager_->Destroy();
-    renderer_->Destory();
+    renderer_->Destroy();
     RestoreHook();
     device_->Release();
   }
@@ -489,7 +493,7 @@ namespace efk
     }
     if ( ave != 0 )
     {
-      printf("%.1fFPS \t", 1000.0 / (double) ave);
+      printf("%.1fFPS \t", 1000.0 / (double)ave);
       printf("%dms", ave);
     }
   }
@@ -502,7 +506,7 @@ namespace efk
     const int now_render_material = ExpGetCurrentMaterial();
     UpdateProjection();
     if ( D3DPT_LINELIST != Type && now_render_material == 0 && now_render_object != 0
-      && !now_present_ && (technic_type == 1 || technic_type == 2) )
+        && !now_present_ && (technic_type == 1 || technic_type == 2) )
       for ( int i = 0; i < pmd_num; i++ )
       {
         if ( now_render_object != ExpGetPmdOrder(i) ) continue;
@@ -568,12 +572,12 @@ namespace efk
           if ( !it.second ) continue;
 
           // エフェクトの読込
-          nowEFKLoading = true;
+          hook_rewrite::nowEFKLoading = true;
           auto eff = Effekseer::Effect::Create(manager_, reinterpret_cast<const EFK_CHAR*>((path.remove_filename() / path.stem().stem()).c_str()));
-          nowEFKLoading = false;
+          hook_rewrite::nowEFKLoading = false;
           if ( eff == nullptr )
           {
-            std::wstring error=L".efkファイルの読み込みに失敗しました。\nfilename: " + (path.remove_filename() / path.stem().stem()).wstring();
+            std::wstring error = L".efkファイルの読み込みに失敗しました。\nfilename: " + (path.remove_filename() / path.stem().stem()).wstring();
             MessageBoxW(nullptr, error.c_str(), L"エラー", MB_OK);
           }
           it.first->second = MyEffect(manager_, eff, PMDResource(i));
@@ -609,38 +613,28 @@ namespace efk
 
   void D3D9DeviceEffekserr::HookAPI()
   {
-    hook_rewrite::RewriteCreateFileW();
-    hook_rewrite::RewriteCloseHandle();
-    hook_rewrite::RewriteReadFile();
+    hook_rewrite::Rewrite_wsopen_s();
+    hook_rewrite::Rewrite_read();
+    hook_rewrite::Rewrite_close();
     hook_rewrite::RewriteSetFilePointer();
-    //hook_rewrite::RewriteDragFinish();
-    HMODULE handle = LoadLibrary("shell32.dll");
-    PFDragQueryFileW = reinterpret_cast<FDragQueryFileW>(GetProcAddress(handle, "DragQueryFileW"));
-    modifyIAT("shell32.dll", PFDragQueryFileW, myDragQueryFileW);
-
-    PFDragFinish = reinterpret_cast<FDragFinish>(GetProcAddress(handle, "DragFinish"));
-    modifyIAT("shell32.dll", PFDragFinish, myDragFinish);
+    hook_rewrite::RewriteDragFinish();
+    hook_rewrite::RewriteDragQueryFileW();
 
     // メニューバーの追加
     auto hwnd = getHWND();
     auto hmenu = GetMenu(hwnd);
-    AppendMenuA(hmenu, MF_RIGHTJUSTIFY , 10000001, "Effekseer");
+    AppendMenuA(hmenu, MF_RIGHTJUSTIFY, WM_APP + 1, "Effekseer");
     DrawMenuBar(hwnd);
   }
 
   void D3D9DeviceEffekserr::RestoreHook()
   {
-    hook_rewrite::RestoreCreateFileW();
-    hook_rewrite::RestoreCloseHandle();
-    hook_rewrite::RestoreReadFile();
-    hook_rewrite::RestoreSetFilePointer();
-    //hook_rewrite::RewriteDragFinish();
-    HMODULE handle = LoadLibrary("shell32.dll");
-    PFDragQueryFileW = reinterpret_cast<FDragQueryFileW>(GetProcAddress(handle, "DragQueryFileW"));
-    modifyIAT("shell32.dll", myDragQueryFileW, PFDragQueryFileW);
-
-    PFDragFinish = reinterpret_cast<FDragFinish>(GetProcAddress(handle, "DragFinish"));
-    modifyIAT("shell32.dll", myDragFinish, PFDragFinish);
+    hook_rewrite::PF_wsopen_s.reset();
+    hook_rewrite::PF_read.reset();
+    hook_rewrite::PF_close.reset();
+    hook_rewrite::PFSetFilePointer.reset();
+    hook_rewrite::PFDragFinish.reset();
+    hook_rewrite::PFDragQueryFileW.reset();
   }
 
   void D3D9DeviceEffekserr::Reset(D3DPRESENT_PARAMETERS* pPresentationParameters)

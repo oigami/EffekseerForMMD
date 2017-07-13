@@ -80,7 +80,6 @@
   <ItemGroup>
     <ClCompile Include="effekseer_dll.cpp" />
     <ClCompile Include="main.cpp" />
-    <ClCompile Include="ReWriteFunction.cpp" />
     <ClCompile Include="stdafx.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
     </ClCompile>
