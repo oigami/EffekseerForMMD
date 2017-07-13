@@ -5,6 +5,7 @@
 
 #include <mutex>
 #include <experimental/filesystem>
+#include <io.h>
 namespace filesystem = std::experimental::filesystem;
 
 HMODULE dllModule();
@@ -36,40 +37,13 @@ namespace efk
         constexpr static int filename_pos_end = sizeof(char[3]) + sizeof(float) + 20;
       };
 
-      std::unordered_map<HANDLE, ReadFileData> now_read_pmd_file;
+      std::unordered_map<int, ReadFileData> now_read_pmd_file;
       std::mutex now_read_pmd_file_mutex;
 
-      HOOK_KERNEL32_CREATE_FUNC(BOOL, CloseHandle, HANDLE hObject)
-      {
-        std::lock_guard<std::mutex> lock(now_read_pmd_file_mutex);
-        now_read_pmd_file.erase(hObject);
-        printf("CloseHandle: %p\n", hObject);
-        return PFCloseHandle(hObject);
-      }
-
-
-      HOOK_KERNEL32_CREATE_FUNC(HANDLE, CreateFileA, LPCSTR lpFileName,
-        DWORD dwDesiredAccess,
-        DWORD dwShareMode,
-        LPSECURITY_ATTRIBUTES lpSecurityAttributes,
-        DWORD dwCreationDisposition,
-        DWORD dwFlagsAndAttributes,
-        HANDLE hTemplateFile)
-      {
-        puts(lpFileName);
-        return PFCreateFileA(lpFileName, dwDesiredAccess, dwShareMode, lpSecurityAttributes, dwCreationDisposition, dwFlagsAndAttributes, hTemplateFile);
-      }
-
-      HOOK_KERNEL32_CREATE_FUNC(HANDLE, CreateFileW, LPCWSTR lpFileName,
-        DWORD dwDesiredAccess,
-        DWORD dwShareMode,
-        LPSECURITY_ATTRIBUTES lpSecurityAttributes,
-        DWORD dwCreationDisposition,
-        DWORD dwFlagsAndAttributes,
-        HANDLE hTemplateFile)
+      HOOK_CREATE_FUNC("MSVCR90", errno_t, _wsopen_s, int* pfh, const wchar_t* filename, int oflag, int shflag, int pmode)
       {
         bool is_default_pmd = false;
-        filesystem::path path(lpFileName);
+        filesystem::path path(filename);
         const auto efk_filename = path.filename().stem().stem().string();
         if ( !nowEFKLoading && path.extension() == L".efk" )
         {
@@ -79,7 +53,7 @@ namespace efk
           // efkファイルの場所に同名のpmdファイルが有る場合そのファイルを優先
           if ( filesystem::exists(path) )
           {
-            lpFileName = path.c_str();
+            filename = path.c_str();
           }
           else if ( 0 != GetModuleFileNameA(dllModule(), module_path, MAX_PATH) )
           {
@@ -89,67 +63,71 @@ namespace efk
             {
               MessageBoxW(nullptr, L"EffekseerForMMDの動作に必要なefk.pmdがありません。\nもう一度インストールを試してください", L"エラー", MB_OK);
             }
-            lpFileName = path.c_str();
+            filename = path.c_str();
             is_default_pmd = true;
           }
         }
-        auto handle = PFCreateFileW(lpFileName, dwDesiredAccess, dwShareMode, lpSecurityAttributes, dwCreationDisposition, dwFlagsAndAttributes, hTemplateFile);
-        printf("myCreateFile : %p %d\n", handle, GetLastError());
-        _putws(lpFileName);
+        auto handle = PF_wsopen_s(pfh, filename, oflag, shflag, pmode);
+        _putws(filename);
         if ( is_default_pmd )
         {
           std::lock_guard<std::mutex> lock(now_read_pmd_file_mutex);
-          now_read_pmd_file.insert({ handle, efk_filename });
+          now_read_pmd_file.insert({ *pfh, efk_filename });
         }
         return handle;
       }
 
-      HOOK_KERNEL32_CREATE_FUNC(BOOL, ReadFile,
-        HANDLE hFile, // ファイルのハンドル
-        LPVOID lpBuffer, // データバッファ
-        DWORD nNumberOfBytesToRead, // 読み取り対象のバイト数
-        LPDWORD lpNumberOfBytesRead, // 読み取ったバイト数
-        LPOVERLAPPED lpOverlapped) // オーバーラップ構造体のバッファ
+      HOOK_CREATE_FUNC("MSVCR90", int, _read, int pfh, void* dstBuf, unsigned int maxCharCount)
       {
-        //printf("ReadFile %d : %d\n", hFile, nNumberOfBytesToRead);
-        auto res = PFReadFile(hFile, lpBuffer, nNumberOfBytesToRead, lpNumberOfBytesRead, lpOverlapped);
+        auto res = PF_read(pfh, dstBuf, maxCharCount);
         std::lock_guard<std::mutex> lock(now_read_pmd_file_mutex);
-        auto it = now_read_pmd_file.find(hFile);
+        auto it = now_read_pmd_file.find(pfh);
         if ( it != now_read_pmd_file.end() )
         {
           auto& data = it->second;
           if ( data.filename_pos <= data.read_cnt && data.read_cnt < data.filename_pos_end )
           {
             int begin_pos = data.read_cnt - data.filename_pos;
-            memcpy(static_cast<BYTE*>(lpBuffer) + begin_pos, data.filename.c_str() + begin_pos, *lpNumberOfBytesRead - begin_pos);
+            memcpy(static_cast<BYTE*>(dstBuf) + begin_pos, data.filename.c_str() + begin_pos, res - begin_pos);
           }
-          data.read_cnt += *lpNumberOfBytesRead;
+          data.read_cnt += res;
         }
         return res;
       }
 
-      HOOK_KERNEL32_CREATE_FUNC(DWORD, SetFilePointer,
-        HANDLE hFile, // ファイルのハンドル
-        LONG lDistanceToMove, // ポインタを移動するべきバイト数
-        PLONG lpDistanceToMoveHigh, // ポインタを移動するべきバイト数
-        DWORD dwMoveMethod) // 開始点
+      HOOK_CREATE_FUNC("MSVCR90", errno_t, _close, int pfh)
       {
-        printf("setpointer: %p %d  ,%d\n", lpDistanceToMoveHigh, lDistanceToMove, dwMoveMethod);
+        std::lock_guard<std::mutex> lock(now_read_pmd_file_mutex);
+        now_read_pmd_file.erase(pfh);
+        return PF_close(pfh);
+      }
+
+      HOOK_KERNEL32_CREATE_FUNC(DWORD, SetFilePointer,
+                                HANDLE hFile, // ファイルのハンドル
+                                LONG lDistanceToMove, // ポインタを移動するべきバイト数
+                                PLONG lpDistanceToMoveHigh, // ポインタを移動するべきバイト数
+                                DWORD dwMoveMethod) // 開始点
+      {
+        //printf("setpointer: %p %d  ,%d\n", lpDistanceToMoveHigh, lDistanceToMove, dwMoveMethod);
         return PFSetFilePointer(hFile, lDistanceToMove, lpDistanceToMoveHigh, dwMoveMethod);
       }
 
 
       HOOK_CREATE_FUNC("Shell32",
-        UINT,
-        DragQueryFileW,
-        HDROP hDrop, // ファイル名構造体のハンドル
-        UINT iFile, // ファイルのインデックス番号
-        LPWSTR lpszFile, // ファイル名を格納するバッファ
-        UINT cch) // バッファのサイズ
+                       UINT,
+                       DragQueryFileW,
+                       HDROP hDrop, // ファイル名構造体のハンドル
+                       UINT iFile, // ファイルのインデックス番号
+                       LPWSTR lpszFile, // ファイル名を格納するバッファ
+                       UINT cch) // バッファのサイズ
       {
         auto res = PFDragQueryFileW(hDrop, iFile, lpszFile, cch);
         filesystem::path path(lpszFile);
-        if ( path.extension() == L".efk" )
+        if ( path.extension() == L".efkproj" )
+        {
+          MessageBoxW(nullptr, L"Effekseer for MMDで読み込める拡張子は「.efk」のものです。Effekseerのツールを使用して「.efk」を出力してください", L"エラー", MB_OK);
+        }
+        else if ( path.extension() == L".efk" )
         {
           const int add_len = sizeof(L".pmd.efk") / sizeof(wchar_t) - 1;
           if ( res + add_len >= cch )
@@ -170,9 +148,9 @@ namespace efk
       }
 
       HOOK_CREATE_FUNC("Shell32",
-        VOID,
-        DragFinish,
-        HDROP hDrop)
+                       VOID,
+                       DragFinish,
+                       HDROP hDrop)
       {
         return PFDragFinish(hDrop);
       }

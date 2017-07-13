@@ -46,7 +46,7 @@ namespace efk
       MORPH_RESOURCE_SIZE,
     };
 
-    static constexpr int morph_resource_size = (int) MorphKind::MORPH_RESOURCE_SIZE;
+    static constexpr int morph_resource_size = (int)MorphKind::MORPH_RESOURCE_SIZE;
     static constexpr std::array<std::array<const char*, 2>, morph_resource_size> morph_name_ = {
       std::array<const char*, 2>{ "trigger","トリガー" },
       { "auto play","オート再生" },
@@ -69,7 +69,7 @@ namespace efk
       BONE_RESOURCE_SIZE,
     };
 
-    static constexpr int bone_resource_size = (int) BoneKind::BONE_RESOURCE_SIZE;
+    static constexpr int bone_resource_size = (int)BoneKind::BONE_RESOURCE_SIZE;
     static constexpr std::array<std::array<const char*, 2>, bone_resource_size> bone_name_ = {
       std::array<const char*, 2>{ "play","再生" },
       { "center","センター" },
@@ -189,7 +189,7 @@ namespace efk
 
     virtual ~DistortingCallback();
 
-    virtual void OnDistorting();
+    virtual bool OnDistorting();
     void OnLostDevice();
     void OnResetDevice();
   private:
