@@ -391,8 +391,8 @@ namespace efk
     HRESULT hr = texture->GetSurfaceLevel(0, texSurface.ReleaseAndGetAddressOf());
     if ( FAILED(hr) )
     {
-      std::wstring error = __FUNCTIONW__"でエラーが発生しました。\ntexture->GetSurfaceLevel : " + std::to_wstring(hr);
-      MessageBoxW(nullptr, error.c_str(), L"エラー", MB_OK);
+      std::wstring error = __FUNCTIONW__" error : texture->GetSurfaceLevel : " + std::to_wstring(hr);
+      MessageBoxW(nullptr, error.c_str(), L"error", MB_OK);
       use_distoring_ = false;
       return false;
     }
@@ -401,8 +401,8 @@ namespace efk
     hr = device->GetRenderTarget(0, targetSurface.ReleaseAndGetAddressOf());
     if ( FAILED(hr) )
     {
-      std::wstring error = __FUNCTIONW__"でエラーが発生しました。\ntexture->GetSurfaceLevel : " + std::to_wstring(hr);
-      MessageBoxW(nullptr, error.c_str(), L"エラー", MB_OK);
+      std::wstring error = __FUNCTIONW__" error : texture->GetSurfaceLevel : " + std::to_wstring(hr);
+      MessageBoxW(nullptr, error.c_str(), L"error", MB_OK);
       use_distoring_ = false;
       return false;
     }
@@ -418,8 +418,8 @@ namespace efk
     hr = device->StretchRect(targetSurface.Get(), &rect, texSurface.Get(), nullptr, D3DTEXF_NONE);
     if ( FAILED(hr) )
     {
-      std::wstring error = __FUNCTIONW__"でエラーが発生しました。\ntexture->GetSurfaceLevel : " + std::to_wstring(hr);
-      MessageBoxW(nullptr, error.c_str(), L"エラー", MB_OK);
+      std::wstring error = __FUNCTIONW__" error : texture->GetSurfaceLevel : " + std::to_wstring(hr);
+      MessageBoxW(nullptr, error.c_str(), L"error", MB_OK);
       use_distoring_ = false;
       return false;
     }
@@ -577,8 +577,8 @@ namespace efk
           hook_rewrite::nowEFKLoading = false;
           if ( eff == nullptr )
           {
-            std::wstring error = L".efkファイルの読み込みに失敗しました。\nfilename: " + (path.remove_filename() / path.stem().stem()).wstring();
-            MessageBoxW(nullptr, error.c_str(), L"エラー", MB_OK);
+            std::wstring error = L"Failed to read the .efk file.\nfilename: " + (path.remove_filename() / path.stem().stem()).wstring();
+            MessageBoxW(nullptr, error.c_str(), L"error", MB_OK);
           }
           it.first->second = MyEffect(manager_, eff, PMDResource(i));
         }
@@ -663,7 +663,7 @@ namespace efk
     Microsoft::WRL::ComPtr<IDirect3DSurface9> tex;
     if ( FAILED(device_->GetRenderTarget(0, tex.ReleaseAndGetAddressOf())) )
     {
-      MessageBoxW(nullptr, L"レンダーターゲットの取得に失敗しました。\nディストーション（歪み）は使用できません。", L"エラー", MB_OK);
+      MessageBoxW(nullptr, L"Failed to get the render target. \ nDistortion (distortion) can not be used.", L"error", MB_OK);
       return;
     }
     D3DSURFACE_DESC desc;
@@ -674,7 +674,7 @@ namespace efk
     }
     else
     {
-      MessageBoxW(nullptr, L"レンダーターゲットの画面サイズの取得に失敗しました。\nディストーション（歪み）は使用できません。", L"エラー", MB_OK);
+      MessageBoxW(nullptr, L"Failed to get the screen size of the render target. \ nDistortion (distortion) can not be used.", L"error", MB_OK);
     }
   }
 }
