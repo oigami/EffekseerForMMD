@@ -1304,7 +1304,10 @@ public:
 	*/
 	virtual Setting* GetSetting() const = 0;
 
-	/* 拡大率を取得する。 */
+	/**
+	@brief	\~English	Get the magnification multiplied by the magnification at the time of loaded and exported.
+			\~Japanese	読み込み時と出力時の拡大率をかけた拡大率を取得する。
+	*/
 	virtual float GetMaginification() const = 0;
 	
 	/**
@@ -1833,6 +1836,15 @@ public:
 	virtual void SetRemovingCallback( Handle handle, EffectInstanceRemovingCallback callback ) = 0;
 
 	/**
+	@brief	\~English	Get status that a particle of effect specified is shown.
+	\~Japanese	指定したエフェクトのパーティクルが表示されているか取得する。
+
+	@param	handle	\~English	Particle's handle
+	\~Japanese	パーティクルのハンドル
+	*/
+	virtual bool GetShown(Handle handle) = 0;
+
+	/**
 		@brief	エフェクトのインスタンスをDraw時に描画するか設定する。
 		@param	handle	[in]	インスタンスのハンドル
 		@param	shown	[in]	描画するか?
@@ -1840,11 +1852,30 @@ public:
 	virtual void SetShown( Handle handle, bool shown ) = 0;
 
 	/**
-		@brief	エフェクトのインスタンスをUpdate時に更新するか設定する。
+	@brief	\~English	Get status that a particle of effect specified is paused.
+	\~Japanese	指定したエフェクトのパーティクルが一時停止されているか取得する。
+
+	@param	handle	\~English	Particle's handle
+			\~Japanese	パーティクルのハンドル
+	*/
+	virtual bool GetPaused(Handle handle) = 0;
+
+	/**
+		@brief	\~English	Pause or resume a particle of effect specified.
+		\~Japanese	指定したエフェクトのパーティクルを一時停止、もしくは再開する。
+
 		@param	handle	[in]	インスタンスのハンドル
 		@param	paused	[in]	更新するか?
 	*/
 	virtual void SetPaused( Handle handle, bool paused ) = 0;
+
+	/**
+			@brief	\~English	Pause or resume all particle of effects.
+			\~Japanese	全てのエフェクトのパーティクルを一時停止、もしくは再開する。
+			@param	paused \~English	Pause or resume
+			\~Japanese	一時停止、もしくは再開
+	*/
+	virtual void SetPausedToAllEffects(bool paused) = 0;
 
 	/**
 		@brief	エフェクトのインスタンスを再生スピードを設定する。
@@ -2590,12 +2621,6 @@ public:
 	
 		memcpy( &m_version, p, sizeof(int32_t) );
 		p += sizeof(int32_t);
-
-		if (m_version >= 2)
-		{
-			// Scale
-			p += sizeof(int32_t);
-		}
 
 		memcpy( &m_modelCount, p, sizeof(int32_t) );
 		p += sizeof(int32_t);

@@ -13,11 +13,11 @@ namespace filesystem = std::experimental::filesystem;
 #include "effekseer_dll.h"
 
 #ifndef NDEBUG
-# pragma comment(lib,"effekseer/lib/VS2015/Debug/x64/EffekseerRendererDX9")
-# pragma comment(lib,"effekseer/lib/VS2015/Debug/x64/Effekseer")
+# pragma comment(lib,"effekseer/lib/VS2015/x64/EffekseerRendererDX9.Debug.lib")
+# pragma comment(lib,"effekseer/lib/VS2015/x64/Effekseer.Debug.lib")
 #else
-# pragma comment(lib,"effekseer/lib/VS2015/Release/x64/EffekseerRendererDX9")
-# pragma comment(lib,"effekseer/lib/VS2015/Release/x64/Effekseer")
+# pragma comment(lib,"effekseer/lib/VS2015/x64/EffekseerRendererDX9.Release.lib")
+# pragma comment(lib,"effekseer/lib/VS2015/x64/Effekseer.Release.lib")
 
 # define printf(...) (void)0
 # define puts(...) (void)0
