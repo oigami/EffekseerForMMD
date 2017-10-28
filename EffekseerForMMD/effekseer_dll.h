@@ -5,6 +5,7 @@
 #include "mmd/MMDExport.h"
 #include <array>
 #include <cassert>
+#include <functional>
 
 namespace efk
 {
@@ -23,6 +24,7 @@ namespace efk
     float speedUpVal(int i) const;
     float speedDownVal(int i) const;
     float effectTestVal(int i) const;
+    float stopRootVal(int i) const;
 
 
     D3DMATRIX playBone(int i) const;
@@ -41,6 +43,7 @@ namespace efk
       scale_down_morph,
       speed_up_morph,
       speed_down_morph,
+      stop_root_morph,
       at_effect_test_morph,
 
       MORPH_RESOURCE_SIZE,
@@ -57,6 +60,7 @@ namespace efk
       { "scale down","縮小" },
       { "speed up","速度UP" },
       { "speed down","速度DOWN" },
+      { "stop root","stop root" },
       { "@effect test","@エフェクトテスト" },
     };
 
@@ -116,23 +120,111 @@ namespace efk
     int getID(BoneKind k) const { return bone_id_[static_cast<int>(k)]; }
   };
 
+  struct DeltaTime
+  {
+    void update()
+    {
+      pre_mmd_time_ += get() / 30.0f;
+    }
+
+    int get() const
+    {
+      float time = ExpGetFrameTime();
+      return (time - pre_mmd_time_) * 30;
+    }
+
+  private:
+    float pre_mmd_time_ = 0;
+  };
+
+  struct CommonEffect
+  {
+    virtual ~CommonEffect() = default;
+
+    CommonEffect(Effekseer::Manager* manager, Effekseer::Effect* effect,
+                 PMDResource* resource, DeltaTime* delta_time)
+      :manager_(manager), effect_(effect), resource_(resource),
+      delta_time_(delta_time)
+    {
+    }
+    virtual void update(int i) = 0;
+
+    virtual void updateHandle(int i, const std::function<void(Effekseer::Handle, float delta_time)>& update_func) = 0;
+
+    virtual void draw() const = 0;
+  protected:
+    float getSpeed(int i) const { return 1.0f + resource_->speedUpVal(i) - resource_->speedDownVal(i); }
+
+    Effekseer::Manager* manager_;
+    Effekseer::Effect* effect_;
+    PMDResource* resource_;
+    DeltaTime* delta_time_;
+    ;
+  };
+
+  struct TriggerTypeEffect : CommonEffect
+  {
+    TriggerTypeEffect(Effekseer::Manager* manager, Effekseer::Effect* effect, PMDResource* resource_, DeltaTime* delta_time)
+      : CommonEffect(manager, effect, resource_, delta_time)
+    {
+    }
+
+    void draw() const override;
+    void push();
+    void update(int i) override;
+
+    void updateHandle(int i, const std::function<void(Effekseer::Handle, float)>& update_func) override;
+
+  private:
+
+    bool pre_triggerd_ = false;
+    std::vector<Effekseer::Handle> new_effect_handle_;
+    std::vector<Effekseer::Handle> effects_;
+
+  };
+
+  struct AutoPlayTypeEffect : CommonEffect
+  {
+    AutoPlayTypeEffect(Effekseer::Manager* manager, Effekseer::Effect* effect, PMDResource* resource_, DeltaTime* delta_time)
+      : CommonEffect(manager, effect, resource_, delta_time)
+    {
+    }
+
+    void ifCreate();
+    void update(int i) override;
+    void updateHandle(int i, const std::function<void(Effekseer::Handle, float)>& update_func_) override;
+    void draw() const override;
+
+  private:
+
+    Effekseer::Handle handle_ = -1;
+  };
+
+  struct FrameTypeEffect : CommonEffect
+  {
+    FrameTypeEffect(Effekseer::Manager* manager, Effekseer::Effect* effect, PMDResource* resource_, DeltaTime* delta_time)
+      : CommonEffect(manager, effect, resource_, delta_time)
+    {
+    }
+
+    void ifCreate();
+    void update(int i) override;
+    void updateHandle(int i, const std::function<void(Effekseer::Handle, float)>& update_func_) override;
+    void draw() const override;
+
+  private:
+    Effekseer::Handle handle_ = -1;
+    float now_frame_ = 0;
+  };
+
   struct MyEffect
   {
     MyEffect();
-    MyEffect(Effekseer::Manager* manager, Effekseer::Effect* effect, PMDResource resource);
+    MyEffect(Effekseer::Manager* manager, Effekseer::Effect* effect, PMDResource resource_);
 
     ~MyEffect();
 
-    void draw() const;
-
-
-    void frameTypeUpdate(float delta_frame);
-
-    void autoPlayTypeUpdate(int i);
-
-    void pushTriggerType();
-    void triggerTypeUpdate(int i);
-
+    void draw(int i) const;
 
     void OnLostDevice() const;
     void OnResetDevice() const;
@@ -145,17 +237,10 @@ namespace efk
 
     void update(int i);
 
-    PMDResource resource;
+    std::shared_ptr<PMDResource> resource_;
 
   private:
 
-    int deltaFrame() const;
-
-    void ifCreate();
-
-    void create();
-
-    void UpdateMainHandle(float time);
     void UpdateHandle(Effekseer::Handle handle, float delta_time);
 
     /* 共通 */
@@ -168,15 +253,11 @@ namespace efk
 
     /* オート再生、フレーム */
 
-    Effekseer::Handle handle_;
-    float now_frame_;
-    float pre_mmd_time_;
 
-    /* トリガー */
-
-    bool pre_triggerd_ = false;
-    std::vector<Effekseer::Handle> trigger_type_effect_;
-
+    std::shared_ptr<DeltaTime> delta_time_;
+    TriggerTypeEffect trigger_;
+    AutoPlayTypeEffect auto_paly_;
+    FrameTypeEffect frame_;
     /* 描画テスト */
     Effekseer::Handle effect_test_handle_;
   };

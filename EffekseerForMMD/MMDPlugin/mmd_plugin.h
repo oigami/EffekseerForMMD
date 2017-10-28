@@ -3,6 +3,13 @@
 #include <memory>
 #include <string>
 #include <experimental/filesystem>
+
+//#define MMDPLUGIN_D3DX9_HOOK
+#ifdef MMDPLUGIN_D3DX9_HOOK
+#include <d3dx9.h>
+#endif // MMDPLUGIN_D3DX9_HOOK
+
+
 #define MMD_PLUGIN_API __declspec(dllexport)
 #ifdef MAKE_MMD_PLUGIN
 # define MMD_DLL_FUNC_API __declspec(dllexport)
@@ -558,25 +565,25 @@ struct MMDPluginDLL3 : public MMDPluginDLL2
   /// SetWindowsHookEx(WH_CALLWNDPROC)でフックしたプロシージャです。
   /// </summary>
   /// <param name="param"></param>
-  virtual void WndProc(const CWPSTRUCT* param) {}
+  virtual void WndProc(CWPSTRUCT* param) {}
 
   /// <summary>
   /// SetWindowsHookEx(WH_MSGFILTER)でフックしたプロシージャです。
   /// </summary>
   /// <param name="param"></param>
-  virtual void MsgProc(int code, const MSG* param) {}
+  virtual void MsgProc(int code, MSG* param) {}
 
   /// <summary>
   /// SetWindowsHookEx(WH_MOUSE)でフックしたプロシージャです。
   /// </summary>
   /// <param name="param"></param>
-  virtual void MouseProc(WPARAM wParam, const MOUSEHOOKSTRUCT* param) {}
+  virtual void MouseProc(WPARAM wParam, MOUSEHOOKSTRUCT* param) {}
 
   /// <summary>
   /// SetWindowsHookEx(WH_GETMESSAGE)でフックしたプロシージャです。
   /// </summary>
   /// <param name="param"></param>
-  virtual void GetMsgProc(int code, const MSG* param) {}
+  virtual void GetMsgProc(int code, MSG* param) {}
 
   /// <summary>
   /// SetWindowsHookEx(WH_KEYBOARD)でフックしたプロシージャです。
@@ -597,6 +604,201 @@ struct MMDPluginDLL3 : public MMDPluginDLL2
   /// </returns>
   virtual std::pair<bool, LRESULT> WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) { return { false,0 }; }
 };
+
+#ifdef MMDPLUGIN_D3DX9_HOOK
+
+struct MMDPluginDLL4 : public MMDPluginDLL3
+{
+  virtual void D3DXCreateEffectFromFileExW(
+    LPDIRECT3DDEVICE9&		    pDevice,
+    LPCWSTR&						 pSrcFile,
+    CONST D3DXMACRO*&				pDefines,
+    LPD3DXINCLUDE&				pInclude,
+    LPCSTR&						  pSkipConstants,
+    DWORD&						Flags,
+    LPD3DXEFFECTPOOL&				pPool,
+    LPD3DXEFFECT*&				ppEffect,
+    LPD3DXBUFFER*&				ppCompilationErrors)
+  {
+  }
+
+  virtual void PostD3DXCreateEffectFromFileExW(
+    LPDIRECT3DDEVICE9&		    pDevice,
+    LPCWSTR&						 pSrcFile,
+    CONST D3DXMACRO*&				pDefines,
+    LPD3DXINCLUDE&				pInclude,
+    LPCSTR&						  pSkipConstants,
+    DWORD&						Flags,
+    LPD3DXEFFECTPOOL&				pPool,
+    LPD3DXEFFECT*&				ppEffect,
+    LPD3DXBUFFER*&				ppCompilationErrors, HRESULT& res)
+  {
+  }
+};
+
+namespace mmp
+{
+  using HookEffectQueryInterfacePF = HRESULT(WINAPI *)(ID3DXEffect* effect, REFIID iid, LPVOID *ppv);
+  MMD_DLL_FUNC_API HookEffectQueryInterfacePF HookEffectQueryInterface(ID3DXEffect* effect, HookEffectQueryInterfacePF f);
+  using HookEffectAddRefPF = ULONG(WINAPI *)(ID3DXEffect* effect);
+  MMD_DLL_FUNC_API HookEffectAddRefPF HookEffectAddRef(ID3DXEffect* effect, HookEffectAddRefPF f);
+  using HookEffectReleasePF = ULONG(WINAPI *)(ID3DXEffect* effect);
+  MMD_DLL_FUNC_API HookEffectReleasePF HookEffectRelease(ID3DXEffect* effect, HookEffectReleasePF f);
+  using HookEffectGetDescPF = HRESULT(WINAPI *)(ID3DXEffect* effect, D3DXEFFECT_DESC* pDesc);
+  MMD_DLL_FUNC_API HookEffectGetDescPF HookEffectGetDesc(ID3DXEffect* effect, HookEffectGetDescPF f);
+  using HookEffectGetParameterDescPF = HRESULT(WINAPI *)(ID3DXEffect* effect, D3DXHANDLE hParameter, D3DXPARAMETER_DESC* pDesc);
+  MMD_DLL_FUNC_API HookEffectGetParameterDescPF HookEffectGetParameterDesc(ID3DXEffect* effect, HookEffectGetParameterDescPF f);
+  using HookEffectGetTechniqueDescPF = HRESULT(WINAPI *)(ID3DXEffect* effect, D3DXHANDLE hTechnique, D3DXTECHNIQUE_DESC* pDesc);
+  MMD_DLL_FUNC_API HookEffectGetTechniqueDescPF HookEffectGetTechniqueDesc(ID3DXEffect* effect, HookEffectGetTechniqueDescPF f);
+  using HookEffectGetPassDescPF = HRESULT(WINAPI *)(ID3DXEffect* effect, D3DXHANDLE hPass, D3DXPASS_DESC* pDesc);
+  MMD_DLL_FUNC_API HookEffectGetPassDescPF HookEffectGetPassDesc(ID3DXEffect* effect, HookEffectGetPassDescPF f);
+  using HookEffectGetFunctionDescPF = HRESULT(WINAPI *)(ID3DXEffect* effect, D3DXHANDLE hShader, D3DXFUNCTION_DESC* pDesc);
+  MMD_DLL_FUNC_API HookEffectGetFunctionDescPF HookEffectGetFunctionDesc(ID3DXEffect* effect, HookEffectGetFunctionDescPF f);
+  using HookEffectGetParameterPF = D3DXHANDLE(WINAPI *)(ID3DXEffect* effect, D3DXHANDLE hParameter, UINT Index);
+  MMD_DLL_FUNC_API HookEffectGetParameterPF HookEffectGetParameter(ID3DXEffect* effect, HookEffectGetParameterPF f);
+  using HookEffectGetParameterByNamePF = D3DXHANDLE(WINAPI *)(ID3DXEffect* effect, D3DXHANDLE hParameter, LPCSTR pName);
+  MMD_DLL_FUNC_API HookEffectGetParameterByNamePF HookEffectGetParameterByName(ID3DXEffect* effect, HookEffectGetParameterByNamePF f);
+  using HookEffectGetParameterBySemanticPF = D3DXHANDLE(WINAPI *)(ID3DXEffect* effect, D3DXHANDLE hParameter, LPCSTR pSemantic);
+  MMD_DLL_FUNC_API HookEffectGetParameterBySemanticPF HookEffectGetParameterBySemantic(ID3DXEffect* effect, HookEffectGetParameterBySemanticPF f);
+  using HookEffectGetParameterElementPF = D3DXHANDLE(WINAPI *)(ID3DXEffect* effect, D3DXHANDLE hParameter, UINT Index);
+  MMD_DLL_FUNC_API HookEffectGetParameterElementPF HookEffectGetParameterElement(ID3DXEffect* effect, HookEffectGetParameterElementPF f);
+  using HookEffectGetTechniquePF = D3DXHANDLE(WINAPI *)(ID3DXEffect* effect, UINT Index);
+  MMD_DLL_FUNC_API HookEffectGetTechniquePF HookEffectGetTechnique(ID3DXEffect* effect, HookEffectGetTechniquePF f);
+  using HookEffectGetTechniqueByNamePF = D3DXHANDLE(WINAPI *)(ID3DXEffect* effect, LPCSTR pName);
+  MMD_DLL_FUNC_API HookEffectGetTechniqueByNamePF HookEffectGetTechniqueByName(ID3DXEffect* effect, HookEffectGetTechniqueByNamePF f);
+  using HookEffectGetPassPF = D3DXHANDLE(WINAPI *)(ID3DXEffect* effect, D3DXHANDLE hTechnique, UINT Index);
+  MMD_DLL_FUNC_API HookEffectGetPassPF HookEffectGetPass(ID3DXEffect* effect, HookEffectGetPassPF f);
+  using HookEffectGetPassByNamePF = D3DXHANDLE(WINAPI *)(ID3DXEffect* effect, D3DXHANDLE hTechnique, LPCSTR pName);
+  MMD_DLL_FUNC_API HookEffectGetPassByNamePF HookEffectGetPassByName(ID3DXEffect* effect, HookEffectGetPassByNamePF f);
+  using HookEffectGetFunctionPF = D3DXHANDLE(WINAPI *)(ID3DXEffect* effect, UINT Index);
+  MMD_DLL_FUNC_API HookEffectGetFunctionPF HookEffectGetFunction(ID3DXEffect* effect, HookEffectGetFunctionPF f);
+  using HookEffectGetFunctionByNamePF = D3DXHANDLE(WINAPI *)(ID3DXEffect* effect, LPCSTR pName);
+  MMD_DLL_FUNC_API HookEffectGetFunctionByNamePF HookEffectGetFunctionByName(ID3DXEffect* effect, HookEffectGetFunctionByNamePF f);
+  using HookEffectGetAnnotationPF = D3DXHANDLE(WINAPI *)(ID3DXEffect* effect, D3DXHANDLE hObject, UINT Index);
+  MMD_DLL_FUNC_API HookEffectGetAnnotationPF HookEffectGetAnnotation(ID3DXEffect* effect, HookEffectGetAnnotationPF f);
+  using HookEffectGetAnnotationByNamePF = D3DXHANDLE(WINAPI *)(ID3DXEffect* effect, D3DXHANDLE hObject, LPCSTR pName);
+  MMD_DLL_FUNC_API HookEffectGetAnnotationByNamePF HookEffectGetAnnotationByName(ID3DXEffect* effect, HookEffectGetAnnotationByNamePF f);
+  using HookEffectSetValuePF = HRESULT(WINAPI *)(ID3DXEffect* effect, D3DXHANDLE hParameter, LPCVOID pData, UINT Bytes);
+  MMD_DLL_FUNC_API HookEffectSetValuePF HookEffectSetValue(ID3DXEffect* effect, HookEffectSetValuePF f);
+  using HookEffectGetValuePF = HRESULT(WINAPI *)(ID3DXEffect* effect, D3DXHANDLE hParameter, LPVOID pData, UINT Bytes);
+  MMD_DLL_FUNC_API HookEffectGetValuePF HookEffectGetValue(ID3DXEffect* effect, HookEffectGetValuePF f);
+  using HookEffectSetBoolPF = HRESULT(WINAPI *)(ID3DXEffect* effect, D3DXHANDLE hParameter, BOOL b);
+  MMD_DLL_FUNC_API HookEffectSetBoolPF HookEffectSetBool(ID3DXEffect* effect, HookEffectSetBoolPF f);
+  using HookEffectGetBoolPF = HRESULT(WINAPI *)(ID3DXEffect* effect, D3DXHANDLE hParameter, BOOL* pb);
+  MMD_DLL_FUNC_API HookEffectGetBoolPF HookEffectGetBool(ID3DXEffect* effect, HookEffectGetBoolPF f);
+  using HookEffectSetBoolArrayPF = HRESULT(WINAPI *)(ID3DXEffect* effect, D3DXHANDLE hParameter, CONST BOOL* pb, UINT Count);
+  MMD_DLL_FUNC_API HookEffectSetBoolArrayPF HookEffectSetBoolArray(ID3DXEffect* effect, HookEffectSetBoolArrayPF f);
+  using HookEffectGetBoolArrayPF = HRESULT(WINAPI *)(ID3DXEffect* effect, D3DXHANDLE hParameter, BOOL* pb, UINT Count);
+  MMD_DLL_FUNC_API HookEffectGetBoolArrayPF HookEffectGetBoolArray(ID3DXEffect* effect, HookEffectGetBoolArrayPF f);
+  using HookEffectSetIntPF = HRESULT(WINAPI *)(ID3DXEffect* effect, D3DXHANDLE hParameter, INT n);
+  MMD_DLL_FUNC_API HookEffectSetIntPF HookEffectSetInt(ID3DXEffect* effect, HookEffectSetIntPF f);
+  using HookEffectGetIntPF = HRESULT(WINAPI *)(ID3DXEffect* effect, D3DXHANDLE hParameter, INT* pn);
+  MMD_DLL_FUNC_API HookEffectGetIntPF HookEffectGetInt(ID3DXEffect* effect, HookEffectGetIntPF f);
+  using HookEffectSetIntArrayPF = HRESULT(WINAPI *)(ID3DXEffect* effect, D3DXHANDLE hParameter, CONST INT* pn, UINT Count);
+  MMD_DLL_FUNC_API HookEffectSetIntArrayPF HookEffectSetIntArray(ID3DXEffect* effect, HookEffectSetIntArrayPF f);
+  using HookEffectGetIntArrayPF = HRESULT(WINAPI *)(ID3DXEffect* effect, D3DXHANDLE hParameter, INT* pn, UINT Count);
+  MMD_DLL_FUNC_API HookEffectGetIntArrayPF HookEffectGetIntArray(ID3DXEffect* effect, HookEffectGetIntArrayPF f);
+  using HookEffectSetFloatPF = HRESULT(WINAPI *)(ID3DXEffect* effect, D3DXHANDLE hParameter, FLOAT f);
+  MMD_DLL_FUNC_API HookEffectSetFloatPF HookEffectSetFloat(ID3DXEffect* effect, HookEffectSetFloatPF f);
+  using HookEffectGetFloatPF = HRESULT(WINAPI *)(ID3DXEffect* effect, D3DXHANDLE hParameter, FLOAT* pf);
+  MMD_DLL_FUNC_API HookEffectGetFloatPF HookEffectGetFloat(ID3DXEffect* effect, HookEffectGetFloatPF f);
+  using HookEffectSetFloatArrayPF = HRESULT(WINAPI *)(ID3DXEffect* effect, D3DXHANDLE hParameter, CONST FLOAT* pf, UINT Count);
+  MMD_DLL_FUNC_API HookEffectSetFloatArrayPF HookEffectSetFloatArray(ID3DXEffect* effect, HookEffectSetFloatArrayPF f);
+  using HookEffectGetFloatArrayPF = HRESULT(WINAPI *)(ID3DXEffect* effect, D3DXHANDLE hParameter, FLOAT* pf, UINT Count);
+  MMD_DLL_FUNC_API HookEffectGetFloatArrayPF HookEffectGetFloatArray(ID3DXEffect* effect, HookEffectGetFloatArrayPF f);
+  using HookEffectSetVectorPF = HRESULT(WINAPI *)(ID3DXEffect* effect, D3DXHANDLE hParameter, CONST D3DXVECTOR4* pVector);
+  MMD_DLL_FUNC_API HookEffectSetVectorPF HookEffectSetVector(ID3DXEffect* effect, HookEffectSetVectorPF f);
+  using HookEffectGetVectorPF = HRESULT(WINAPI *)(ID3DXEffect* effect, D3DXHANDLE hParameter, D3DXVECTOR4* pVector);
+  MMD_DLL_FUNC_API HookEffectGetVectorPF HookEffectGetVector(ID3DXEffect* effect, HookEffectGetVectorPF f);
+  using HookEffectSetVectorArrayPF = HRESULT(WINAPI *)(ID3DXEffect* effect, D3DXHANDLE hParameter, CONST D3DXVECTOR4* pVector, UINT Count);
+  MMD_DLL_FUNC_API HookEffectSetVectorArrayPF HookEffectSetVectorArray(ID3DXEffect* effect, HookEffectSetVectorArrayPF f);
+  using HookEffectGetVectorArrayPF = HRESULT(WINAPI *)(ID3DXEffect* effect, D3DXHANDLE hParameter, D3DXVECTOR4* pVector, UINT Count);
+  MMD_DLL_FUNC_API HookEffectGetVectorArrayPF HookEffectGetVectorArray(ID3DXEffect* effect, HookEffectGetVectorArrayPF f);
+  using HookEffectSetMatrixPF = HRESULT(WINAPI *)(ID3DXEffect* effect, D3DXHANDLE hParameter, CONST D3DXMATRIX* pMatrix);
+  MMD_DLL_FUNC_API HookEffectSetMatrixPF HookEffectSetMatrix(ID3DXEffect* effect, HookEffectSetMatrixPF f);
+  using HookEffectGetMatrixPF = HRESULT(WINAPI *)(ID3DXEffect* effect, D3DXHANDLE hParameter, D3DXMATRIX* pMatrix);
+  MMD_DLL_FUNC_API HookEffectGetMatrixPF HookEffectGetMatrix(ID3DXEffect* effect, HookEffectGetMatrixPF f);
+  using HookEffectSetMatrixArrayPF = HRESULT(WINAPI *)(ID3DXEffect* effect, D3DXHANDLE hParameter, CONST D3DXMATRIX* pMatrix, UINT Count);
+  MMD_DLL_FUNC_API HookEffectSetMatrixArrayPF HookEffectSetMatrixArray(ID3DXEffect* effect, HookEffectSetMatrixArrayPF f);
+  using HookEffectGetMatrixArrayPF = HRESULT(WINAPI *)(ID3DXEffect* effect, D3DXHANDLE hParameter, D3DXMATRIX* pMatrix, UINT Count);
+  MMD_DLL_FUNC_API HookEffectGetMatrixArrayPF HookEffectGetMatrixArray(ID3DXEffect* effect, HookEffectGetMatrixArrayPF f);
+  using HookEffectSetMatrixPointerArrayPF = HRESULT(WINAPI *)(ID3DXEffect* effect, D3DXHANDLE hParameter, CONST D3DXMATRIX** ppMatrix, UINT Count);
+  MMD_DLL_FUNC_API HookEffectSetMatrixPointerArrayPF HookEffectSetMatrixPointerArray(ID3DXEffect* effect, HookEffectSetMatrixPointerArrayPF f);
+  using HookEffectGetMatrixPointerArrayPF = HRESULT(WINAPI *)(ID3DXEffect* effect, D3DXHANDLE hParameter, D3DXMATRIX** ppMatrix, UINT Count);
+  MMD_DLL_FUNC_API HookEffectGetMatrixPointerArrayPF HookEffectGetMatrixPointerArray(ID3DXEffect* effect, HookEffectGetMatrixPointerArrayPF f);
+  using HookEffectSetMatrixTransposePF = HRESULT(WINAPI *)(ID3DXEffect* effect, D3DXHANDLE hParameter, CONST D3DXMATRIX* pMatrix);
+  MMD_DLL_FUNC_API HookEffectSetMatrixTransposePF HookEffectSetMatrixTranspose(ID3DXEffect* effect, HookEffectSetMatrixTransposePF f);
+  using HookEffectGetMatrixTransposePF = HRESULT(WINAPI *)(ID3DXEffect* effect, D3DXHANDLE hParameter, D3DXMATRIX* pMatrix);
+  MMD_DLL_FUNC_API HookEffectGetMatrixTransposePF HookEffectGetMatrixTranspose(ID3DXEffect* effect, HookEffectGetMatrixTransposePF f);
+  using HookEffectSetMatrixTransposeArrayPF = HRESULT(WINAPI *)(ID3DXEffect* effect, D3DXHANDLE hParameter, CONST D3DXMATRIX* pMatrix, UINT Count);
+  MMD_DLL_FUNC_API HookEffectSetMatrixTransposeArrayPF HookEffectSetMatrixTransposeArray(ID3DXEffect* effect, HookEffectSetMatrixTransposeArrayPF f);
+  using HookEffectGetMatrixTransposeArrayPF = HRESULT(WINAPI *)(ID3DXEffect* effect, D3DXHANDLE hParameter, D3DXMATRIX* pMatrix, UINT Count);
+  MMD_DLL_FUNC_API HookEffectGetMatrixTransposeArrayPF HookEffectGetMatrixTransposeArray(ID3DXEffect* effect, HookEffectGetMatrixTransposeArrayPF f);
+  using HookEffectSetMatrixTransposePointerArrayPF = HRESULT(WINAPI *)(ID3DXEffect* effect, D3DXHANDLE hParameter, CONST D3DXMATRIX** ppMatrix, UINT Count);
+  MMD_DLL_FUNC_API HookEffectSetMatrixTransposePointerArrayPF HookEffectSetMatrixTransposePointerArray(ID3DXEffect* effect, HookEffectSetMatrixTransposePointerArrayPF f);
+  using HookEffectGetMatrixTransposePointerArrayPF = HRESULT(WINAPI *)(ID3DXEffect* effect, D3DXHANDLE hParameter, D3DXMATRIX** ppMatrix, UINT Count);
+  MMD_DLL_FUNC_API HookEffectGetMatrixTransposePointerArrayPF HookEffectGetMatrixTransposePointerArray(ID3DXEffect* effect, HookEffectGetMatrixTransposePointerArrayPF f);
+  using HookEffectSetStringPF = HRESULT(WINAPI *)(ID3DXEffect* effect, D3DXHANDLE hParameter, LPCSTR pString);
+  MMD_DLL_FUNC_API HookEffectSetStringPF HookEffectSetString(ID3DXEffect* effect, HookEffectSetStringPF f);
+  using HookEffectGetStringPF = HRESULT(WINAPI *)(ID3DXEffect* effect, D3DXHANDLE hParameter, LPCSTR* ppString);
+  MMD_DLL_FUNC_API HookEffectGetStringPF HookEffectGetString(ID3DXEffect* effect, HookEffectGetStringPF f);
+  using HookEffectSetTexturePF = HRESULT(WINAPI *)(ID3DXEffect* effect, D3DXHANDLE hParameter, LPDIRECT3DBASETEXTURE9 pTexture);
+  MMD_DLL_FUNC_API HookEffectSetTexturePF HookEffectSetTexture(ID3DXEffect* effect, HookEffectSetTexturePF f);
+  using HookEffectGetTexturePF = HRESULT(WINAPI *)(ID3DXEffect* effect, D3DXHANDLE hParameter, LPDIRECT3DBASETEXTURE9 *ppTexture);
+  MMD_DLL_FUNC_API HookEffectGetTexturePF HookEffectGetTexture(ID3DXEffect* effect, HookEffectGetTexturePF f);
+  using HookEffectGetPixelShaderPF = HRESULT(WINAPI *)(ID3DXEffect* effect, D3DXHANDLE hParameter, LPDIRECT3DPIXELSHADER9 *ppPShader);
+  MMD_DLL_FUNC_API HookEffectGetPixelShaderPF HookEffectGetPixelShader(ID3DXEffect* effect, HookEffectGetPixelShaderPF f);
+  using HookEffectGetVertexShaderPF = HRESULT(WINAPI *)(ID3DXEffect* effect, D3DXHANDLE hParameter, LPDIRECT3DVERTEXSHADER9 *ppVShader);
+  MMD_DLL_FUNC_API HookEffectGetVertexShaderPF HookEffectGetVertexShader(ID3DXEffect* effect, HookEffectGetVertexShaderPF f);
+  using HookEffectSetArrayRangePF = HRESULT(WINAPI *)(ID3DXEffect* effect, D3DXHANDLE hParameter, UINT uStart, UINT uEnd);
+  MMD_DLL_FUNC_API HookEffectSetArrayRangePF HookEffectSetArrayRange(ID3DXEffect* effect, HookEffectSetArrayRangePF f);
+  using HookEffectGetPoolPF = HRESULT(WINAPI *)(ID3DXEffect* effect, LPD3DXEFFECTPOOL* ppPool);
+  MMD_DLL_FUNC_API HookEffectGetPoolPF HookEffectGetPool(ID3DXEffect* effect, HookEffectGetPoolPF f);
+  using HookEffectSetTechniquePF = HRESULT(WINAPI *)(ID3DXEffect* effect, D3DXHANDLE hTechnique);
+  MMD_DLL_FUNC_API HookEffectSetTechniquePF HookEffectSetTechnique(ID3DXEffect* effect, HookEffectSetTechniquePF f);
+  using HookEffectGetCurrentTechniquePF = D3DXHANDLE(WINAPI *)(ID3DXEffect* effect);
+  MMD_DLL_FUNC_API HookEffectGetCurrentTechniquePF HookEffectGetCurrentTechnique(ID3DXEffect* effect, HookEffectGetCurrentTechniquePF f);
+  using HookEffectValidateTechniquePF = HRESULT(WINAPI *)(ID3DXEffect* effect, D3DXHANDLE hTechnique);
+  MMD_DLL_FUNC_API HookEffectValidateTechniquePF HookEffectValidateTechnique(ID3DXEffect* effect, HookEffectValidateTechniquePF f);
+  using HookEffectFindNextValidTechniquePF = HRESULT(WINAPI *)(ID3DXEffect* effect, D3DXHANDLE hTechnique, D3DXHANDLE *pTechnique);
+  MMD_DLL_FUNC_API HookEffectFindNextValidTechniquePF HookEffectFindNextValidTechnique(ID3DXEffect* effect, HookEffectFindNextValidTechniquePF f);
+  using HookEffectIsParameterUsedPF = BOOL(WINAPI *)(ID3DXEffect* effect, D3DXHANDLE hParameter, D3DXHANDLE hTechnique);
+  MMD_DLL_FUNC_API HookEffectIsParameterUsedPF HookEffectIsParameterUsed(ID3DXEffect* effect, HookEffectIsParameterUsedPF f);
+  using HookEffectBeginPF = HRESULT(WINAPI *)(ID3DXEffect* effect, UINT *pPasses, DWORD Flags);
+  MMD_DLL_FUNC_API HookEffectBeginPF HookEffectBegin(ID3DXEffect* effect, HookEffectBeginPF f);
+  using HookEffectBeginPassPF = HRESULT(WINAPI *)(ID3DXEffect* effect, UINT Pass);
+  MMD_DLL_FUNC_API HookEffectBeginPassPF HookEffectBeginPass(ID3DXEffect* effect, HookEffectBeginPassPF f);
+  using HookEffectCommitChangesPF = HRESULT(WINAPI *)(ID3DXEffect* effect);
+  MMD_DLL_FUNC_API HookEffectCommitChangesPF HookEffectCommitChanges(ID3DXEffect* effect, HookEffectCommitChangesPF f);
+  using HookEffectEndPassPF = HRESULT(WINAPI *)(ID3DXEffect* effect);
+  MMD_DLL_FUNC_API HookEffectEndPassPF HookEffectEndPass(ID3DXEffect* effect, HookEffectEndPassPF f);
+  using HookEffectEndPF = HRESULT(WINAPI *)(ID3DXEffect* effect);
+  MMD_DLL_FUNC_API HookEffectEndPF HookEffectEnd(ID3DXEffect* effect, HookEffectEndPF f);
+  using HookEffectGetDevicePF = HRESULT(WINAPI *)(ID3DXEffect* effect, LPDIRECT3DDEVICE9* ppDevice);
+  MMD_DLL_FUNC_API HookEffectGetDevicePF HookEffectGetDevice(ID3DXEffect* effect, HookEffectGetDevicePF f);
+  using HookEffectOnLostDevicePF = HRESULT(WINAPI *)(ID3DXEffect* effect);
+  MMD_DLL_FUNC_API HookEffectOnLostDevicePF HookEffectOnLostDevice(ID3DXEffect* effect, HookEffectOnLostDevicePF f);
+  using HookEffectOnResetDevicePF = HRESULT(WINAPI *)(ID3DXEffect* effect);
+  MMD_DLL_FUNC_API HookEffectOnResetDevicePF HookEffectOnResetDevice(ID3DXEffect* effect, HookEffectOnResetDevicePF f);
+  using HookEffectSetStateManagerPF = HRESULT(WINAPI *)(ID3DXEffect* effect, LPD3DXEFFECTSTATEMANAGER pManager);
+  MMD_DLL_FUNC_API HookEffectSetStateManagerPF HookEffectSetStateManager(ID3DXEffect* effect, HookEffectSetStateManagerPF f);
+  using HookEffectGetStateManagerPF = HRESULT(WINAPI *)(ID3DXEffect* effect, LPD3DXEFFECTSTATEMANAGER *ppManager);
+  MMD_DLL_FUNC_API HookEffectGetStateManagerPF HookEffectGetStateManager(ID3DXEffect* effect, HookEffectGetStateManagerPF f);
+  using HookEffectBeginParameterBlockPF = HRESULT(WINAPI *)(ID3DXEffect* effect);
+  MMD_DLL_FUNC_API HookEffectBeginParameterBlockPF HookEffectBeginParameterBlock(ID3DXEffect* effect, HookEffectBeginParameterBlockPF f);
+  using HookEffectEndParameterBlockPF = D3DXHANDLE(WINAPI *)(ID3DXEffect* effect);
+  MMD_DLL_FUNC_API HookEffectEndParameterBlockPF HookEffectEndParameterBlock(ID3DXEffect* effect, HookEffectEndParameterBlockPF f);
+  using HookEffectApplyParameterBlockPF = HRESULT(WINAPI *)(ID3DXEffect* effect, D3DXHANDLE hParameterBlock);
+  MMD_DLL_FUNC_API HookEffectApplyParameterBlockPF HookEffectApplyParameterBlock(ID3DXEffect* effect, HookEffectApplyParameterBlockPF f);
+  using HookEffectDeleteParameterBlockPF = HRESULT(WINAPI *)(ID3DXEffect* effect, D3DXHANDLE hParameterBlock);
+  MMD_DLL_FUNC_API HookEffectDeleteParameterBlockPF HookEffectDeleteParameterBlock(ID3DXEffect* effect, HookEffectDeleteParameterBlockPF f);
+  using HookEffectCloneEffectPF = HRESULT(WINAPI *)(ID3DXEffect* effect, LPDIRECT3DDEVICE9 pDevice, LPD3DXEFFECT* ppEffect);
+  MMD_DLL_FUNC_API HookEffectCloneEffectPF HookEffectCloneEffect(ID3DXEffect* effect, HookEffectCloneEffectPF f);
+  using HookEffectSetRawValuePF = HRESULT(WINAPI *)(ID3DXEffect* effect, D3DXHANDLE hParameter, LPCVOID pData, UINT ByteOffset, UINT Bytes);
+  MMD_DLL_FUNC_API HookEffectSetRawValuePF HookEffectSetRawValue(ID3DXEffect* effect, HookEffectSetRawValuePF f);
+
+}
+#endif // MMDPLUGIN_D3DX9_HOOK
 
 // ReSharper restore CppParameterNeverUsed
 #pragma warning( pop )
@@ -855,7 +1057,6 @@ namespace mmp
   static_assert(12560 == offsetof(MMDModelData, bone_count), "");
   static_assert(12572 == offsetof(MMDModelData, selected_bone), "");
   static_assert(12592 == offsetof(MMDModelData, selected_morph_indices), "");
-
   // ReSharper restore CppZeroConstantCanBeReplacedWithNullptr
 
   struct MMDMainData
@@ -949,7 +1150,6 @@ namespace mmp
   static_assert(660344 == offsetof(MMDMainData, is_camera_select), "");
   static_assert(661752 == offsetof(MMDMainData, length), "");
   static_assert(661788 == offsetof(MMDMainData, pmm_path), "");
-
   // ReSharper restore CppZeroConstantCanBeReplacedWithNullptr
 
   inline MMDMainData* getMMDMainData()
@@ -995,4 +1195,14 @@ extern "C"
   // 配列の場合
   MMD_PLUGIN_API MMDPluginDLL3** createArray3(IDirect3DDevice9* device, int* out_array_size);
   MMD_PLUGIN_API void destroyArray3(MMDPluginDLL3** p);
+
+#ifdef MMDPLUGIN_D3DX9_HOOK
+
+  MMD_PLUGIN_API MMDPluginDLL4* create4(IDirect3DDevice9* device);
+  MMD_PLUGIN_API void destroy4(MMDPluginDLL4* p);
+
+  MMD_PLUGIN_API MMDPluginDLL4** createArray4(IDirect3DDevice9* device, int* out_array_size);
+  MMD_PLUGIN_API void destroyArray4(MMDPluginDLL4** p);
+
+#endif
 }

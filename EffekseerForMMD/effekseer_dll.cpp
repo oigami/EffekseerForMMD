@@ -113,6 +113,8 @@ namespace efk
 
   float PMDResource::effectTestVal(int i) const { return getMorph(i, MorphKind::at_effect_test_morph); }
 
+  float PMDResource::stopRootVal(int i) const { return getMorph(i, MorphKind::stop_root_morph); }
+
 
   D3DMATRIX PMDResource::playBone(int i) const { return getBone(i, BoneKind::play_bone); }
 
@@ -121,15 +123,257 @@ namespace efk
   D3DMATRIX PMDResource::baseBone(int i) const { return getBone(i, BoneKind::base_bone); }
 
 
-  MyEffect::MyEffect() : resource(-1), manager_(nullptr), effect_(nullptr), handle_(-1), now_frame_(0),
-    pre_mmd_time_(0), effect_test_handle_(-1)
+
+
+  void TriggerTypeEffect::draw() const
+  {
+    for ( auto& i : effects_ )
+    {
+      manager_->DrawHandle(i);
+    }
+  }
+
+  void TriggerTypeEffect::push()
+  {
+    const auto handle = manager_->Play(effect_, 0.0f, 0.0f, 0.0f);
+    new_effect_handle_.push_back(handle);
+    manager_->Flip();
+  }
+
+  void TriggerTypeEffect::update(int i)
+  {
+    const auto is_trigger = std::abs(resource_->triggerVal(i) - 1.0f) <= eps;
+    if ( is_trigger )
+    {
+      // クロックの立ち上がりもしくは0フレーム目のときに生成する
+      if ( pre_triggerd_ == false || std::abs(ExpGetFrameTime() - 0.0f) <= eps && effects_.size() == 0 )
+      {
+        push();
+      }
+    }
+
+    pre_triggerd_ = is_trigger;
+
+    const int delta_frame = delta_time_->get();
+    // 前のフレームに戻っている場合または、トリガー削除が1の場合は既存の再生ハンドルをすべて削除
+    if ( delta_frame < 0 || resource_->triggerEraseVal(i) >= 1.0f - eps )
+    {
+      for ( auto& handle : effects_ )
+      {
+        manager_->StopEffect(handle);
+      }
+      effects_.clear();
+    }
+
+    // StopRootのときはすべてを止める
+    if ( std::abs(resource_->stopRootVal(i) - 1.0f) <= eps )
+    {
+      for ( auto& handle : new_effect_handle_ )
+      {
+        manager_->StopRoot(handle);
+      }
+
+      for ( auto& handle : effects_ )
+      {
+        manager_->StopRoot(handle);
+      }
+    }
+
+    // 再生が終了したものを削除
+    auto e = std::remove_if(effects_.begin(), effects_.end(), [this](Effekseer::Handle h)
+    {
+      return !manager_->Exists(h);
+    });
+    effects_.erase(e, effects_.end());
+  }
+
+  void TriggerTypeEffect::updateHandle(int i, const std::function<void(Effekseer::Handle, float)>& update_func_)
+  {
+    const int delta_frame = delta_time_->get();
+    // 初回はリソースのデータを使って制御するので大本でUpdateする
+    for ( auto& handle : new_effect_handle_ )
+    {
+      update_func_(handle, 0.0f);
+      effects_.push_back(handle);
+    }
+
+    // トリガーによって作られたハンドルは制御しないのでただUpdateする
+    for ( auto& handle : effects_ )
+    {
+      if ( delta_frame == 0 )
+      {
+        manager_->UpdateHandle(handle, 0.0f);
+        continue;
+      }
+
+      for ( int k = 0; k < delta_frame; ++k )
+      {
+        manager_->UpdateHandle(handle, getSpeed(i));
+      }
+    }
+  }
+
+
+  void AutoPlayTypeEffect::ifCreate()
+  {
+    if ( manager_->Exists(handle_) == false )
+    {
+      if ( manager_->Exists(handle_) )
+      {
+        manager_->StopEffect(handle_);
+      }
+
+      handle_ = manager_->Play(effect_, 0.0f, 0.0f, 0.0f);
+      manager_->Flip();
+    }
+  }
+
+  void AutoPlayTypeEffect::update(int i)
+  {
+
+    if ( std::abs(resource_->loopVal(i) - 1.0f) <= eps )
+    {
+      ifCreate();
+    }
+
+    const int delta_frame = delta_time_->get();
+    if ( delta_frame < 0 )
+    {
+      if ( manager_->Exists(handle_) )
+      {
+        manager_->StopEffect(handle_);
+      }
+
+      handle_ = -1;
+      if ( std::abs(ExpGetFrameTime() - 0.0f) <= eps )
+      {
+        ifCreate();
+      }
+    }
+
+    if ( handle_ == -1 )
+    {
+      return;
+    }
+
+    if ( std::abs(resource_->stopRootVal(i) - 1.0f) <= eps )
+    {
+      manager_->StopRoot(handle_);
+    }
+
+  }
+
+  void AutoPlayTypeEffect::updateHandle(int i, const std::function<void(Effekseer::Handle, float)>&update_func_)
+  {
+    const auto delta_frame = delta_time_->get();
+    for ( int j = 0; j < delta_frame; ++j )
+    {
+      update_func_(handle_, getSpeed(i));
+    }
+  }
+
+  void AutoPlayTypeEffect::draw() const
+  {
+    if ( handle_ != -1 )
+    {
+      manager_->DrawHandle(handle_);
+    }
+  }
+
+  void FrameTypeEffect::ifCreate()
+  {
+    if ( handle_ != -1 && manager_->Exists(handle_) )
+    {
+      return;
+    }
+    manager_->StopEffect(handle_);
+    now_frame_ = 0;
+
+    handle_ = manager_->Play(effect_, 0.0f, 0.0f, 0.0f);
+    manager_->Flip();
+  }
+
+  void FrameTypeEffect::update(int i)
+  {
+    // フレーム方式
+    const auto play_mat = resource_->playBone(i);
+    const float new_frame = (play_mat.m[3][1] - 0.5) + resource_->frameVal(i) * 100.0f;
+    if ( handle_ != -1 && now_frame_ > new_frame + eps )
+    {
+      manager_->StopEffect(handle_);
+      handle_ = -1;
+      now_frame_ = 0;
+      return;
+    }
+
+    if ( std::abs(resource_->stopRootVal(i) - 1.0f) <= eps )
+    {
+      if ( handle_ != -1 )
+      {
+        manager_->StopRoot(handle_);
+      }
+    }
+    else
+    {
+      ifCreate();
+    }
+
+  }
+
+  void FrameTypeEffect::updateHandle(int i, const std::function<void(Effekseer::Handle, float)>&update_func_)
+  {
+
+#if 1
+    if ( handle_ == -1 )
+    {
+      return;
+    }
+
+    const auto play_mat = resource_->playBone(i);
+    const float new_frame = (play_mat.m[3][1] - 0.5) + resource_->frameVal(i) * 100.0f;
+
+    const int len = std::min(static_cast<int>(1e9), static_cast<int>(new_frame - now_frame_));
+    for ( int j = 0; j < len; j++ )
+    {
+      update_func_(handle_, 1.0f);
+    }
+    now_frame_ += len;
+    printf("%f %f %d\n", new_frame, now_frame_, len);
+    //manager_->UpdateHandle(handle_, new_frame - now_frame_ - len);
+    update_func_(handle_, 0.0f);
+
+#else
+
+    manager_->UpdateHandle(handle_, new_frame - now_frame_);
+    now_frame_ = new_frame;
+
+#endif
+
+  }
+
+  void FrameTypeEffect::draw() const
+  {
+    if ( handle_ != -1 )
+    {
+      manager_->DrawHandle(handle_);
+    }
+  }
+
+  MyEffect::MyEffect() : manager_(nullptr), effect_(nullptr)
+    , trigger_(nullptr, nullptr, nullptr, nullptr)
+    , auto_paly_(nullptr, nullptr, nullptr, nullptr)
+    , frame_(nullptr, nullptr, nullptr, nullptr), effect_test_handle_(-1)
   {
   }
 
   MyEffect::MyEffect(Effekseer::Manager* manager, Effekseer::Effect* effect, PMDResource resource)
-    : resource(resource), manager_(manager), effect_(effect), handle_(-1), pre_mmd_time_(0), effect_test_handle_(-1)
+    : resource_(std::make_shared<PMDResource>(resource)), manager_(manager), effect_(effect)
+    , delta_time_(std::make_shared<DeltaTime>())
+    , trigger_(manager, effect, resource_.get(), delta_time_.get())
+    , auto_paly_(manager, effect, resource_.get(), delta_time_.get())
+    , frame_(manager, effect, resource_.get(), delta_time_.get())
+    , effect_test_handle_(-1)
   {
-    create();
   }
 
   MyEffect::~MyEffect() {}
@@ -156,156 +400,23 @@ namespace efk
     scale_.Z = z;
   }
 
-  void MyEffect::frameTypeUpdate(float new_frame)
-  {
-    if ( now_frame_ > new_frame + eps )
-    {
-      manager_->StopEffect(handle_);
-      handle_ = -1;
-      now_frame_ = new_frame;
-      return;
-    }
-
-    ifCreate();
-
-#if 1
-
-    const int len = std::min(static_cast<int>(1e9), static_cast<int>(new_frame - now_frame_));
-    for ( int i = 0; i < len; i++ )
-    {
-      UpdateMainHandle(1.0f);
-    }
-    //manager_->UpdateHandle(handle_, new_frame - now_frame_ - len);
-    if ( len == 0 )
-    {
-      UpdateMainHandle(0.0f);
-    }
-
-#else
-
-    manager_->BeginUpdate();
-    manager_->UpdateHandle(handle_, new_frame - now_frame_);
-    manager_->EndUpdate();
-    now_frame_ = new_frame;
-
-#endif
-
-  }
-
-  void MyEffect::autoPlayTypeUpdate(int i)
-  {
-    if ( std::abs(resource.loopVal(i) - 1.0f) <= eps )
-    {
-      ifCreate();
-    }
-
-    const int delta_frame = deltaFrame();
-    if ( delta_frame < 0 )
-    {
-      if ( manager_->Exists(handle_) )
-      {
-        manager_->StopEffect(handle_);
-      }
-
-      now_frame_ = 0.0f;
-      handle_ = -1;
-      if ( std::abs(ExpGetFrameTime() - 0.0f) <= eps )
-      {
-        ifCreate();
-      }
-    }
-
-    if ( handle_ == -1 )
-    {
-      return;
-    }
-
-    for ( int j = 0; j < delta_frame; ++j )
-    {
-      UpdateMainHandle(getSpeed(i));
-    }
-  }
-
-  void MyEffect::draw() const
+  void MyEffect::draw(int i) const
   {
     if ( effect_test_handle_ != -1 )
     {
       manager_->DrawHandle(effect_test_handle_);
     }
 
-    if ( handle_ != -1 )
+    if ( std::abs(resource_->autoPlayVal(i) - 1.0f) <= eps )
     {
-      manager_->DrawHandle(handle_);
-    }
-
-    for ( auto& i : trigger_type_effect_ )
-    {
-      manager_->DrawHandle(i);
-    }
-  }
-
-  void MyEffect::pushTriggerType()
-  {
-    const auto handle = manager_->Play(effect_, 0.0f, 0.0f, 0.0f);
-    trigger_type_effect_.push_back(handle);
-    manager_->Flip();
-    UpdateHandle(handle, 0.0f);
-  }
-
-  void MyEffect::triggerTypeUpdate(int i)
-  {
-    const auto is_trigger = std::abs(resource.triggerVal(i) - 1.0f) <= eps;
-    if ( is_trigger )
-    {
-      if ( pre_triggerd_ == false || std::abs(ExpGetFrameTime() - 0.0f) <= eps && trigger_type_effect_.size() == 0 )
-      {
-        pushTriggerType();
-        pre_triggerd_ = true;
-      }
+      auto_paly_.draw();
     }
     else
     {
-      pre_triggerd_ = false;
+      frame_.draw();
     }
 
-    const int delta_frame = deltaFrame();
-    // 前のフレームに戻っている場合または、トリガー削除が1の場合は既存の再生ハンドルをすべて削除
-    if ( delta_frame < 0 || resource.triggerEraseVal(i) >= 1.0f - eps )
-    {
-      for ( auto& j : trigger_type_effect_ )
-      {
-        manager_->StopEffect(j);
-      }
-      trigger_type_effect_.clear();
-    }
-
-    // 再生が終了したものを削除
-    auto e = std::remove_if(trigger_type_effect_.begin(), trigger_type_effect_.end(), [this](Effekseer::Handle h)
-    {
-      return !manager_->Exists(h);
-    });
-    trigger_type_effect_.erase(e, trigger_type_effect_.end());
-
-    manager_->BeginUpdate();
-    UpdateMainHandle(0.0f);
-    if ( delta_frame >= 1 )
-    {
-      for ( auto& j : trigger_type_effect_ )
-      {
-        for ( int k = 0; k < delta_frame; ++k )
-        {
-          manager_->UpdateHandle(j, getSpeed(i));
-        }
-      }
-    }
-    else
-    {
-      for ( auto& j : trigger_type_effect_ )
-      {
-        manager_->UpdateHandle(j, 0.0f);
-      }
-    }
-    manager_->EndUpdate();
+    trigger_.draw();
   }
 
   void MyEffect::OnLostDevice() const
@@ -324,94 +435,86 @@ namespace efk
     }
   }
 
-  float MyEffect::getSpeed(int i) const { return 1.0f + resource.speedUpVal(i) - resource.speedDownVal(i); }
+  float MyEffect::getSpeed(int i) const { return 1.0f + resource_->speedUpVal(i) - resource_->speedDownVal(i); }
 
   void MyEffect::update(int i)
   {
+    auto &resource = *resource_;
+
     // 座標の処理
-    auto center = resource.centerBone(i);
-    auto base_center = resource.baseBone(i);
+    const auto center = resource.centerBone(i);
+    const auto base_center = resource.baseBone(i);
     setMatrix(center, base_center);
 
-
     // 拡縮処理
-    auto scale = resource.scaleUpVal(i) * 10 - resource.scaleDownVal(i) + 1.0f;
+    const auto scale = resource.scaleUpVal(i) * 10 - resource.scaleDownVal(i) + 1.0f;
     setScale(scale, scale, scale);
 
-    float auto_play_val = resource.autoPlayVal(i);
-    if ( std::abs(auto_play_val - 1.0f) <= eps )
+
+    if ( std::abs(resource.autoPlayVal(i) - 1.0f) <= eps )
     {
-      // オート再生方式
-      autoPlayTypeUpdate(i);
+      auto_paly_.update(i);
     }
     else
     {
-      // フレーム方式
-      const auto play_mat = resource.playBone(i);
-      double play_time = play_mat.m[3][1] + resource.frameVal(i) * 100.0f;
-      play_time = play_time - 0.5;
-
-      frameTypeUpdate(static_cast<float>(play_time));
+      frame_.update(i);
     }
 
     // トリガー方式
-    triggerTypeUpdate(i);
+    trigger_.update(i);
 
+    // エフェクトテスト
     if ( std::abs(resource.effectTestVal(i) - 1.0f) <= eps )
     {
-      if ( manager_->Exists(effect_test_handle_) == false ) effect_test_handle_ = manager_->Play(effect_, 0.0f, 0.0f, 0.0f);
-      UpdateHandle(effect_test_handle_, 1.0f);
+      if ( std::abs(resource.stopRootVal(i) - 1.0f) <= eps )
+      {
+        manager_->StopRoot(effect_test_handle_);
+      }
+      else if ( manager_->Exists(effect_test_handle_) == false )
+      {
+        effect_test_handle_ = manager_->Play(effect_, 0.0f, 0.0f, 0.0f);
+      }
     }
     else
     {
-      if ( manager_->Exists(effect_test_handle_) ) manager_->StopEffect(effect_test_handle_);
+      if ( manager_->Exists(effect_test_handle_) )
+      {
+        manager_->StopEffect(effect_test_handle_);
+      }
       effect_test_handle_ = -1;
     }
-    const int delta_time = deltaFrame();
-    pre_mmd_time_ += delta_time / 30.0f;
-  }
 
-  int MyEffect::deltaFrame() const
-  {
-    float time = ExpGetFrameTime();
-    return (time - pre_mmd_time_) * 30;
-  }
-
-  void MyEffect::ifCreate()
-  {
-    if ( !manager_->Exists(handle_) )
-    {
-      create();
-    }
-  }
-
-  void MyEffect::create()
-  {
-    if ( manager_->Exists(handle_) )
-    {
-      manager_->StopEffect(handle_);
-    }
-
-    handle_ = manager_->Play(effect_, 0.0f, 0.0f, 0.0f);
     manager_->Flip();
-    now_frame_ = 0.0;
-    printf("create %f\n", ExpGetFrameTime());
-  }
 
-  void MyEffect::UpdateMainHandle(float delta_time)
-  {
-    UpdateHandle(handle_, delta_time);
-    now_frame_ += delta_time;
+    auto update_func = [this](auto h, auto delta)
+    {
+      manager_->BeginUpdate();
+      this->UpdateHandle(h, delta);
+      manager_->EndUpdate();
+    };
+
+    {
+      frame_.updateHandle(i, update_func);
+
+      trigger_.updateHandle(i, update_func);
+
+      auto_paly_.updateHandle(i, update_func);
+
+      if ( effect_test_handle_ != -1 )
+      {
+        UpdateHandle(effect_test_handle_, getSpeed(i));
+      }
+    }
+
+    delta_time_->update();
   }
 
   void MyEffect::UpdateHandle(Effekseer::Handle h, float delta_time)
   {
-    manager_->BeginUpdate();
     manager_->SetMatrix(h, matrix_);
     manager_->SetBaseMatrix(h, base_matrix_);
     manager_->SetScale(h, scale_.X, scale_.Y, scale_.Z);
     manager_->UpdateHandle(h, delta_time);
-    manager_->EndUpdate();
   }
 
   DistortingCallback::DistortingCallback(::EffekseerRendererDX9::Renderer* renderer, LPDIRECT3DDEVICE9 device,
@@ -598,7 +701,7 @@ namespace efk
         if ( renderer_->BeginRendering() )
         {
           // エフェクトの描画を行う。
-          effect.draw();
+          effect.draw(i);
 
           // エフェクトの描画終了処理を行う。
           renderer_->EndRendering();
@@ -741,7 +844,7 @@ namespace efk
     Microsoft::WRL::ComPtr<IDirect3DSurface9> tex;
     if ( FAILED(device_->GetRenderTarget(0, tex.ReleaseAndGetAddressOf())) )
     {
-      MessageBoxW(nullptr, L"Failed to get the render target. \ nDistortion (distortion) can not be used.", L"error", MB_OK);
+      MessageBoxW(nullptr, L"Failed to get the render target. \nDistortion (distortion) can not be used.", L"error", MB_OK);
       return;
     }
     D3DSURFACE_DESC desc;
@@ -752,7 +855,7 @@ namespace efk
     }
     else
     {
-      MessageBoxW(nullptr, L"Failed to get the screen size of the render target. \ nDistortion (distortion) can not be used.", L"error", MB_OK);
+      MessageBoxW(nullptr, L"Failed to get the screen size of the render target. \nDistortion (distortion) can not be used.", L"error", MB_OK);
     }
   }
 }
