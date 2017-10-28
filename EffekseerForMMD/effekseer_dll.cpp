@@ -68,7 +68,7 @@ namespace efk
     morph_id_.fill(0);
     for ( int j = 0, len = ExpGetPmdMorphNum(i); j < len; ++j )
     {
-      auto name = ExpGetPmdMorphName(i, j);
+      const char* name = ExpGetPmdMorphName(i, j);
       for ( int k = 0; k < morph_resource_size; ++k )
       {
         if ( strcmp(getName(static_cast<MorphKind>(k)), name) == 0 )
@@ -81,7 +81,7 @@ namespace efk
     bone_id_.fill(-1);
     for ( int j = 0, len = ExpGetPmdBoneNum(i); j < len; ++j )
     {
-      auto name = ExpGetPmdBoneName(i, j);
+      const char* name = ExpGetPmdBoneName(i, j);
       for ( int k = 0; k < bone_resource_size; ++k )
       {
         if ( strcmp(getName(static_cast<BoneKind>(k)), name) == 0 )
@@ -165,8 +165,11 @@ namespace efk
       now_frame_ = new_frame;
       return;
     }
-    else ifCreate();
+
+    ifCreate();
+
 #if 1
+
     const int len = std::min(static_cast<int>(1e9), static_cast<int>(new_frame - now_frame_));
     for ( int i = 0; i < len; i++ )
     {
@@ -177,26 +180,46 @@ namespace efk
     {
       UpdateMainHandle(0.0f);
     }
+
 #else
+
     manager_->BeginUpdate();
     manager_->UpdateHandle(handle_, new_frame - now_frame_);
     manager_->EndUpdate();
     now_frame_ = new_frame;
+
 #endif
+
   }
 
   void MyEffect::autoPlayTypeUpdate(int i)
   {
-    if ( resource.loopVal(i) > 1.0f - eps ) ifCreate();
+    if ( std::abs(resource.loopVal(i) - 1.0f) <= eps )
+    {
+      ifCreate();
+    }
+
     const int delta_frame = deltaFrame();
     if ( delta_frame < 0 )
     {
-      if ( manager_->Exists(handle_) ) manager_->StopEffect(handle_);
+      if ( manager_->Exists(handle_) )
+      {
+        manager_->StopEffect(handle_);
+      }
+
       now_frame_ = 0.0f;
       handle_ = -1;
-      if ( ExpGetFrameTime() <= 0.0f + eps ) ifCreate();
+      if ( std::abs(ExpGetFrameTime() - 0.0f) <= eps )
+      {
+        ifCreate();
+      }
     }
-    if ( handle_ == -1 ) return;
+
+    if ( handle_ == -1 )
+    {
+      return;
+    }
+
     for ( int j = 0; j < delta_frame; ++j )
     {
       UpdateMainHandle(getSpeed(i));
@@ -205,8 +228,15 @@ namespace efk
 
   void MyEffect::draw() const
   {
-    if ( effect_test_handle_ != -1 ) manager_->DrawHandle(effect_test_handle_);
-    if ( handle_ != -1 ) manager_->DrawHandle(handle_);
+    if ( effect_test_handle_ != -1 )
+    {
+      manager_->DrawHandle(effect_test_handle_);
+    }
+
+    if ( handle_ != -1 )
+    {
+      manager_->DrawHandle(handle_);
+    }
 
     for ( auto& i : trigger_type_effect_ )
     {
@@ -216,18 +246,18 @@ namespace efk
 
   void MyEffect::pushTriggerType()
   {
-    auto h = manager_->Play(effect_, 0.0f, 0.0f, 0.0f);
-    trigger_type_effect_.push_back(h);
+    const auto handle = manager_->Play(effect_, 0.0f, 0.0f, 0.0f);
+    trigger_type_effect_.push_back(handle);
     manager_->Flip();
-    UpdateHandle(h, 0.0f);
+    UpdateHandle(handle, 0.0f);
   }
 
   void MyEffect::triggerTypeUpdate(int i)
   {
-    auto is_trigger = resource.triggerVal(i) >= 1.0f - eps;
+    const auto is_trigger = std::abs(resource.triggerVal(i) - 1.0f) <= eps;
     if ( is_trigger )
     {
-      if ( pre_triggerd_ == false || ExpGetFrameTime() <= 0.0f + eps && trigger_type_effect_.size() == 0 )
+      if ( pre_triggerd_ == false || std::abs(ExpGetFrameTime() - 0.0f) <= eps && trigger_type_effect_.size() == 0 )
       {
         pushTriggerType();
         pre_triggerd_ = true;
@@ -242,9 +272,9 @@ namespace efk
     // 前のフレームに戻っている場合または、トリガー削除が1の場合は既存の再生ハンドルをすべて削除
     if ( delta_frame < 0 || resource.triggerEraseVal(i) >= 1.0f - eps )
     {
-      for ( auto& i : trigger_type_effect_ )
+      for ( auto& j : trigger_type_effect_ )
       {
-        manager_->StopEffect(i);
+        manager_->StopEffect(j);
       }
       trigger_type_effect_.clear();
     }
@@ -254,7 +284,7 @@ namespace efk
     {
       return !manager_->Exists(h);
     });
-    trigger_type_effect_.resize(distance(trigger_type_effect_.begin(), e));
+    trigger_type_effect_.erase(e, trigger_type_effect_.end());
 
     manager_->BeginUpdate();
     UpdateMainHandle(0.0f);
@@ -280,12 +310,18 @@ namespace efk
 
   void MyEffect::OnLostDevice() const
   {
-    if ( effect_ ) effect_->UnloadResources();
+    if ( effect_ )
+    {
+      effect_->UnloadResources();
+    }
   }
 
   void MyEffect::OnResetDevice() const
   {
-    if ( effect_ ) effect_->ReloadResources();
+    if ( effect_ )
+    {
+      effect_->ReloadResources();
+    }
   }
 
   float MyEffect::getSpeed(int i) const { return 1.0f + resource.speedUpVal(i) - resource.speedDownVal(i); }
@@ -303,7 +339,7 @@ namespace efk
     setScale(scale, scale, scale);
 
     float auto_play_val = resource.autoPlayVal(i);
-    if ( auto_play_val >= 1.0f - eps )
+    if ( std::abs(auto_play_val - 1.0f) <= eps )
     {
       // オート再生方式
       autoPlayTypeUpdate(i);
@@ -311,7 +347,7 @@ namespace efk
     else
     {
       // フレーム方式
-      auto play_mat = resource.playBone(i);
+      const auto play_mat = resource.playBone(i);
       double play_time = play_mat.m[3][1] + resource.frameVal(i) * 100.0f;
       play_time = play_time - 0.5;
 
@@ -321,7 +357,7 @@ namespace efk
     // トリガー方式
     triggerTypeUpdate(i);
 
-    if ( resource.effectTestVal(i) > 1.0f - eps )
+    if ( std::abs(resource.effectTestVal(i) - 1.0f) <= eps )
     {
       if ( manager_->Exists(effect_test_handle_) == false ) effect_test_handle_ = manager_->Play(effect_, 0.0f, 0.0f, 0.0f);
       UpdateHandle(effect_test_handle_, 1.0f);
@@ -343,12 +379,19 @@ namespace efk
 
   void MyEffect::ifCreate()
   {
-    if ( !manager_->Exists(handle_) ) create();
+    if ( !manager_->Exists(handle_) )
+    {
+      create();
+    }
   }
 
   void MyEffect::create()
   {
-    if ( manager_->Exists(handle_) ) manager_->StopEffect(handle_);
+    if ( manager_->Exists(handle_) )
+    {
+      manager_->StopEffect(handle_);
+    }
+
     handle_ = manager_->Play(effect_, 0.0f, 0.0f, 0.0f);
     manager_->Flip();
     now_frame_ = 0.0;
@@ -384,7 +427,10 @@ namespace efk
 
   bool DistortingCallback::OnDistorting()
   {
-    if ( use_distoring_ == false ) return false;
+    if ( use_distoring_ == false )
+    {
+      return false;
+    }
 
     Microsoft::WRL::ComPtr<IDirect3DSurface9> texSurface;
 
@@ -409,7 +455,7 @@ namespace efk
 
     D3DVIEWPORT9 viewport;
     device->GetViewport(&viewport);
-    RECT rect{
+    const RECT rect{
       static_cast<LONG>(viewport.X),
       static_cast<LONG>(viewport.Y),
       static_cast<LONG>(viewport.Width + viewport.X),
@@ -479,7 +525,6 @@ namespace efk
 
   void fps()
   {
-    int i;
     static int t = 0, ave = 0, f[60];
     static int count = 0;
     count++;
@@ -488,9 +533,14 @@ namespace efk
     if ( count % 60 == 59 )
     {
       ave = 0;
-      for ( i = 0; i < 60; i++ ) ave += f[i];
+      for ( int i = 0; i < 60; i++ )
+      {
+        ave += f[i];
+      }
+
       ave /= 60;
     }
+
     if ( ave != 0 )
     {
       printf("%.1fFPS \t", 1000.0 / (double)ave);
@@ -505,84 +555,104 @@ namespace efk
     const int now_render_object = ExpGetCurrentObject();
     const int now_render_material = ExpGetCurrentMaterial();
     UpdateProjection();
-    if ( D3DPT_LINELIST != Type && now_render_material == 0 && now_render_object != 0
-        && !now_present_ && (technic_type == 1 || technic_type == 2) )
-      for ( int i = 0; i < pmd_num; i++ )
+    if ( D3DPT_LINELIST == Type
+        || now_render_material != 0
+        || now_render_object == 0
+        || now_present_
+        || (technic_type != 1 && technic_type != 2) )
+    {
+      return;
+    }
+
+    for ( int i = 0; i < pmd_num; i++ )
+    {
+      if ( now_render_object != ExpGetPmdOrder(i) )
       {
-        if ( now_render_object != ExpGetPmdOrder(i) ) continue;
-
-        UpdateCamera();
-        const int ID = ExpGetPmdID(i);
-        auto it = effect_.find(ID);
-        if ( it != effect_.end() )
-        {
-          auto& effect = it->second;
-
-          effect.update(i);
-
-          now_present_ = true;
-
-          // Effekseerライブラリがリストアしてくれないので自前でバックアップしてる
-          float constant_data[256 * 4];
-          device_->GetVertexShaderConstantF(0, constant_data, sizeof(constant_data) / sizeof(float) / 4);
-
-          UINT stride;
-          IDirect3DVertexBuffer9* stream_data;
-          UINT offset;
-          device_->GetStreamSource(0, &stream_data, &offset, &stride);
-
-          IDirect3DIndexBuffer9* index_data;
-          device_->GetIndices(&index_data);
-
-          // エフェクトの描画開始処理を行う。
-          if ( renderer_->BeginRendering() )
-          {
-            // エフェクトの描画を行う。
-            effect.draw();
-
-            // エフェクトの描画終了処理を行う。
-            renderer_->EndRendering();
-          }
-
-          device_->SetStreamSource(0, stream_data, offset, stride);
-          if ( stream_data ) stream_data->Release();
-
-          device_->SetIndices(index_data);
-          if ( index_data ) index_data->Release();
-
-          device_->SetVertexShaderConstantF(0, constant_data, sizeof(constant_data) / sizeof(float) / 4);
-
-          now_present_ = false;
-        }
+        continue;
       }
+
+      UpdateCamera();
+      const int ID = ExpGetPmdID(i);
+      auto it = effect_.find(ID);
+      if ( it != effect_.end() )
+      {
+        auto& effect = it->second;
+
+        effect.update(i);
+
+        now_present_ = true;
+
+        // Effekseerライブラリがリストアしてくれないので自前でバックアップしてる
+        float constant_data[256 * 4];
+        device_->GetVertexShaderConstantF(0, constant_data, sizeof(constant_data) / sizeof(float) / 4);
+
+        UINT stride;
+        IDirect3DVertexBuffer9* stream_data;
+        UINT offset;
+        device_->GetStreamSource(0, &stream_data, &offset, &stride);
+
+        IDirect3DIndexBuffer9* index_data;
+        device_->GetIndices(&index_data);
+
+        // エフェクトの描画開始処理を行う。
+        if ( renderer_->BeginRendering() )
+        {
+          // エフェクトの描画を行う。
+          effect.draw();
+
+          // エフェクトの描画終了処理を行う。
+          renderer_->EndRendering();
+        }
+
+        device_->SetStreamSource(0, stream_data, offset, stride);
+        if ( stream_data ) stream_data->Release();
+
+        device_->SetIndices(index_data);
+        if ( index_data ) index_data->Release();
+
+        device_->SetVertexShaderConstantF(0, constant_data, sizeof(constant_data) / sizeof(float) / 4);
+
+        now_present_ = false;
+      }
+    }
   }
 
   void D3D9DeviceEffekserr::BeginScene(void)
   {
     int len = ExpGetPmdNum();
-    if ( len != effect_.size() )
-      for ( int i = 0; i < len; i++ )
-      {
-        const int id = ExpGetPmdID(i);
-        const auto file_name = ExpGetPmdFilename(i);
-        filesystem::path path(file_name);
-        if ( ".efk" == path.extension() )
-        {
-          auto it = effect_.insert({ id, MyEffect() });
-          if ( !it.second ) continue;
+    if ( len == effect_.size() )
+    {
+      return;
+    }
 
-          // エフェクトの読込
-          hook_rewrite::nowEFKLoading = true;
-          auto eff = Effekseer::Effect::Create(manager_, reinterpret_cast<const EFK_CHAR*>((path.remove_filename() / path.stem().stem()).c_str()));
-          hook_rewrite::nowEFKLoading = false;
-          if ( eff == nullptr )
-          {
-            std::wstring error = L"Failed to read the .efk file.\nfilename: " + (path.remove_filename() / path.stem().stem()).wstring();
-            MessageBoxW(nullptr, error.c_str(), L"error", MB_OK);
-          }
-          it.first->second = MyEffect(manager_, eff, PMDResource(i));
-        }
+    for ( int i = 0; i < len; i++ )
+    {
+      const int id = ExpGetPmdID(i);
+      const auto file_name = ExpGetPmdFilename(i);
+      filesystem::path path(file_name);
+      if ( ".efk" != path.extension() )
+      {
+        continue;
       }
+
+      auto it = effect_.insert({ id, MyEffect() });
+      if ( !it.second )
+      {
+        continue;
+      }
+
+      // エフェクトの読込
+      hook_rewrite::nowEFKLoading = true;
+      const auto eff = Effekseer::Effect::Create(manager_, reinterpret_cast<const EFK_CHAR*>((path.remove_filename() / path.stem().stem()).c_str()));
+      hook_rewrite::nowEFKLoading = false;
+
+      if ( eff == nullptr )
+      {
+        std::wstring error = L"Failed to read the .efk file.\nfilename: " + (path.remove_filename() / path.stem().stem()).wstring();
+        MessageBoxW(nullptr, error.c_str(), L"error", MB_OK);
+      }
+      it.first->second = MyEffect(manager_, eff, PMDResource(i));
+    }
   }
 
   void D3D9DeviceEffekserr::EndScene(void)
@@ -644,12 +714,20 @@ namespace efk
     {
       i.second.OnLostDevice();
     }
-    distorting_callback_->OnLostDevice();
+
+    if ( distorting_callback_ )
+    {
+      distorting_callback_->OnLostDevice();
+    }
   }
 
   void D3D9DeviceEffekserr::PostReset(D3DPRESENT_PARAMETERS* pPresentationParameters, HRESULT& res)
   {
-    distorting_callback_->OnResetDevice();
+    if ( distorting_callback_ )
+    {
+      distorting_callback_->OnResetDevice();
+    }
+
     for ( auto& i : effect_ )
     {
       i.second.OnResetDevice();
