@@ -4,7 +4,7 @@
 # 導入方法
 [MMDPlugin Installer](https://github.com/oigami/MMDUtility/wiki/how_to_install)を使用してください。
 
-現在、Effekseer1.2xにのみ対応しています。古いバージョンのEffekseerをダウンロードしてください。
+現在、Effekseer1.3xにのみ対応しています。それより新しいバージョンでは動かない可能性があるので注意してください。
 
 # 使い方
 [wiki](https://github.com/oigami/EffekseerForMMD/wiki)に基本的な動作が書いてあります。  
